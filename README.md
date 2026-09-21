@@ -6,17 +6,23 @@ Projeto para o desafio técnico de Backend Sênior: API Java para gestão de pro
 
 **F0-L1 — Bootstrap: GREEN em 2026-09-21.**
 
+**F0-L2 — Domínio: GREEN em 2026-09-21.**
+
+**F0-L3 — Motor de regras: GREEN em 2026-09-21.**
+
+**F0 — Fundação + domínio: GREEN em 2026-09-21.**
+
 A fundação contém:
 
 - backend Java 25 + Spring Boot 3.5.16;
 - REST e GraphQL sobre o mesmo caso de uso de health-check;
-- PostgreSQL 18.6 e Flyway preparados;
+- PostgreSQL 18.6 + Flyway com migration V1 validada do zero;
 - frontend React 19.3 + TypeScript + Vite + Material UI;
 - teste unitário mínimo no frontend e testes de fundação no backend;
 - Docker Compose para banco, backend e frontend;
-- evidências do lote em `docs/evidence/F0-L1`.
+- evidências e gates por lote em `docs/evidence/F0-L1`, `F0-L2` e `F0-L3`.
 
-As regras de Projeto, Responsável, status e métricas entram nos lotes F0-L2 e F0-L3.
+O F0-L2 adicionou o modelo de domínio puro para Projeto, Responsável, Secretaria, datas, status e auditoria mínima. O F0-L3 fechou o motor determinístico de status/métricas, consistência temporal, testes unitários de domínio e a migration inicial do schema relacional. O gate final da F0 passou com 18 testes backend, 2 testes frontend, migration aplicada do zero, Docker, REST, GraphQL e frontend validados.
 
 ## Preparar e subir o ambiente
 
