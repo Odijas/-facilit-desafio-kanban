@@ -1,0 +1,82 @@
+extend type Query {
+  responsible(id: ID!): Responsible!
+  responsibles(page: Int = 0, size: Int = 20): ResponsiblePage!
+  project(id: ID!): Project!
+  projects(page: Int = 0, size: Int = 20, status: ProjectStatus): ProjectPage!
+}
+
+type Mutation {
+  createResponsible(input: ResponsibleInput!): Responsible!
+  updateResponsible(id: ID!, input: ResponsibleInput!): Responsible!
+  deleteResponsible(id: ID!): Boolean!
+  createProject(input: ProjectInput!): Project!
+  updateProject(id: ID!, input: ProjectInput!): Project!
+  transitionProject(id: ID!, status: ProjectStatus!): Project!
+  deleteProject(id: ID!): Boolean!
+}
+
+input ResponsibleInput {
+  name: String!
+  email: String!
+  position: String!
+  secretariatId: ID
+}
+
+type Responsible {
+  id: ID!
+  name: String!
+  email: String!
+  position: String!
+  secretariatId: ID
+  createdAt: String!
+  updatedAt: String!
+}
+
+type ResponsiblePage {
+  content: [Responsible!]!
+  page: Int!
+  size: Int!
+  totalPages: Int!
+  hasNext: Boolean!
+  hasPrevious: Boolean!
+}
+
+enum ProjectStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  OVERDUE
+  COMPLETED
+}
+
+input ProjectInput {
+  name: String!
+  responsibleIds: [ID!]!
+  plannedStart: String
+  plannedEnd: String
+  actualStart: String
+  actualEnd: String
+}
+
+type Project {
+  id: ID!
+  name: String!
+  status: ProjectStatus!
+  responsibleIds: [ID!]!
+  plannedStart: String
+  plannedEnd: String
+  actualStart: String
+  actualEnd: String
+  delayDays: Int!
+  remainingTimePercentage: Int!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type ProjectPage {
+  content: [Project!]!
+  page: Int!
+  size: Int!
+  totalPages: Int!
+  hasNext: Boolean!
+  hasPrevious: Boolean!
+}
