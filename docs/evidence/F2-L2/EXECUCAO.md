@@ -35,3 +35,13 @@ Data: 2026-09-22
 [CORREÇÃO] o gate agora executa `pnpm format` antes de lint/typecheck/test/build, conforme solicitado pelo usuário.
 [DESCONHECIDO] GREEN final depende de nova execução local do gate completo.
 ```
+
+## Promoção final
+
+```text
+[EXECUTADO PELO USUÁRIO · 2026-09-22] F2_L2_PROXY_AUTH_GREEN
+[EXECUTADO PELO USUÁRIO · 2026-09-22] F2_L2_PROXY_LOGOUT_GREEN
+[EXECUTADO PELO USUÁRIO · 2026-09-22] db/backend/frontend ativos; db healthy
+[EXECUTADO PELO USUÁRIO · 2026-09-22] Resultado: exit code 0
+[CONCLUSÃO] F2-L2 GREEN e promovido como baseline do F2-L3.
+```

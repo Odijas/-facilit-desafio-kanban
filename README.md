@@ -22,7 +22,9 @@ Projeto para o desafio técnico de Backend Sênior: API Java para gestão de pro
 
 **F2-L1 — Segurança: GREEN em 2026-09-22.**
 
-**F2-L2 — Fundação frontend autenticada: CANDIDATE em 2026-09-22, aguardando gate local.**
+**F2-L2 — Fundação frontend autenticada: GREEN em 2026-09-22.**
+
+**F2-L3 — Kanban UI: CANDIDATE corrigido e reorganizado em 2026-09-22, aguardando novo gate local.**
 
 A fundação contém:
 
@@ -84,6 +86,7 @@ cd frontend
 corepack enable
 corepack prepare pnpm@12.5.1 --activate
 pnpm install --frozen-lockfile
+pnpm format
 pnpm lint
 pnpm typecheck
 pnpm test
@@ -114,6 +117,13 @@ O F2-L1 adiciona Spring Security com autenticação por e-mail/senha, conta admi
 
 ## F2-L2 — Fundação frontend autenticada
 
-O candidato F2-L2 conecta o frontend ao contrato de autenticação já validado no F2-L1. A aplicação passa a ter rota de login e área protegida, sessão validada por `GET /api/v1/auth/me`, login/logout com CSRF obtido do backend, estados explícitos de carregamento e erro e uma estrutura visual Material UI consistente para o painel. O estado remoto de autenticação permanece em React Query; nenhuma credencial é persistida em `localStorage` ou `sessionStorage`.
+O F2-L2 conecta o frontend ao contrato de autenticação já validado no F2-L1. A aplicação passa a ter rota de login e área protegida, sessão validada por `GET /api/v1/auth/me`, login/logout com CSRF obtido do backend, estados explícitos de carregamento e erro e uma estrutura visual Material UI consistente para o painel. O estado remoto de autenticação permanece em React Query; nenhuma credencial é persistida em `localStorage` ou `sessionStorage`.
 
 O roteamento deste lote cobre somente `/login` e `/` usando a History API nativa do navegador. Essa escolha evita dependência adicional para duas rotas e mantém o diff mínimo; a decisão deve ser reavaliada apenas se a navegação do F2-L3 exigir uma árvore de rotas maior.
+
+
+## F2-L3 — Kanban UI
+
+O candidato F2-L3 adiciona o quadro Kanban autenticado com as quatro colunas do domínio (`NOT_STARTED`, `IN_PROGRESS`, `OVERDUE`, `COMPLETED`), drag-and-drop nativo, criação/edição/exclusão de projetos, cadastro de responsável, associação de responsáveis, feedback das mensagens de domínio e atualização do estado remoto via React Query. As mutações reutilizam o mesmo contrato CSRF validado no F2-L2.
+
+A UI foi reorganizada por responsabilidade: `App.tsx` atua somente como composition root de navegação; autenticação fica em `features/auth`, painel em `features/dashboard`, Kanban em `features/kanban`, navegação em `app/navigation.ts` e estados visuais compartilhados em `components`. O quadro mantém a orquestração de queries/mutações enquanto coluna e diálogos permanecem componentes focados. A camada `api` continua independente do React Query; os callbacks do framework usam adaptadores explícitos.
