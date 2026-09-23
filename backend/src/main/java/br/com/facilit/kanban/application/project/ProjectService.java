@@ -73,6 +73,16 @@ public final class ProjectService {
         return projectRepository.findByStatus(status, pageQuery);
     }
 
+    public PageResult<Project> search(ProjectFilter filter, PageQuery pageQuery) {
+        Objects.requireNonNull(filter, "filter is required");
+        Objects.requireNonNull(pageQuery, "pageQuery is required");
+        return projectRepository.search(filter, pageQuery);
+    }
+
+    public ProjectIndicators indicators() {
+        return projectRepository.indicators();
+    }
+
     public Project update(UUID id, SaveProjectCommand command) {
         Objects.requireNonNull(command, "command is required");
         Project current = get(id);

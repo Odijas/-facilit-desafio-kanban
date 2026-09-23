@@ -24,7 +24,11 @@ Projeto para o desafio técnico de Backend Sênior: API Java para gestão de pro
 
 **F2-L2 — Fundação frontend autenticada: GREEN em 2026-09-22.**
 
-**F2-L3 — Kanban UI: CANDIDATE corrigido e reorganizado em 2026-09-22, aguardando novo gate local.**
+**F2-L3 — Kanban UI: GREEN em 2026-09-22.**
+
+**F2 — Segurança + UI: GREEN em 2026-09-22.**
+
+**F3-L1 — Funcionalidades diferenciais: CANDIDATE rev4 em 2026-09-22, aguardando gate local.**
 
 A fundação contém:
 
@@ -124,6 +128,13 @@ O roteamento deste lote cobre somente `/login` e `/` usando a History API nativa
 
 ## F2-L3 — Kanban UI
 
-O candidato F2-L3 adiciona o quadro Kanban autenticado com as quatro colunas do domínio (`NOT_STARTED`, `IN_PROGRESS`, `OVERDUE`, `COMPLETED`), drag-and-drop nativo, criação/edição/exclusão de projetos, cadastro de responsável, associação de responsáveis, feedback das mensagens de domínio e atualização do estado remoto via React Query. As mutações reutilizam o mesmo contrato CSRF validado no F2-L2.
+O F2-L3 adiciona o quadro Kanban autenticado com as quatro colunas do domínio (`NOT_STARTED`, `IN_PROGRESS`, `OVERDUE`, `COMPLETED`), drag-and-drop nativo, criação/edição/exclusão de projetos, cadastro de responsável, associação de responsáveis, feedback das mensagens de domínio e atualização do estado remoto via React Query. As mutações reutilizam o mesmo contrato CSRF validado no F2-L2.
 
 A UI foi reorganizada por responsabilidade: `App.tsx` atua somente como composition root de navegação; autenticação fica em `features/auth`, painel em `features/dashboard`, Kanban em `features/kanban`, navegação em `app/navigation.ts` e estados visuais compartilhados em `components`. O quadro mantém a orquestração de queries/mutações enquanto coluna e diálogos permanecem componentes focados. A camada `api` continua independente do React Query; os callbacks do framework usam adaptadores explícitos.
+
+
+## F3-L1 — Funcionalidades diferenciais
+
+O candidato F3-L1 adiciona indicadores de projetos, incluindo quantidade por status, média de dias de atraso por status, total e quantidade com atraso; CRUD de Secretaria em REST e GraphQL; e filtros avançados de projetos por status, secretaria, responsável, interseção do período previsto e texto. REST e GraphQL reutilizam o mesmo `ProjectService` e o mesmo `ProjectFilter`.
+
+No frontend, indicadores, gerenciamento de secretarias e filtros ficam em features focadas. O quadro continua responsável pela orquestração do Kanban e invalida indicadores quando mutações de projeto alteram a carteira. Os filtros relacionais e temporais usam os índices já existentes da migration V1/V3; a busca textual por substring permanece sem extensão PostgreSQL adicional para manter o diferencial de baixo risco.

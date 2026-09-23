@@ -5,6 +5,7 @@ import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
 import br.com.facilit.kanban.application.project.ProjectRepository;
+import br.com.facilit.kanban.application.secretariat.SecretariatRepository;
 import br.com.facilit.kanban.domain.common.AuditMetadata;
 import br.com.facilit.kanban.domain.responsible.Responsible;
 import java.time.Clock;

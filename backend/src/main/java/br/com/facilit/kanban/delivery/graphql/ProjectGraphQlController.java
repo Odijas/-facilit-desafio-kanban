@@ -2,6 +2,8 @@ package br.com.facilit.kanban.delivery.graphql;
 
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
+import br.com.facilit.kanban.application.project.ProjectFilter;
+import br.com.facilit.kanban.application.project.ProjectIndicators;
 import br.com.facilit.kanban.application.project.ProjectService;
 import br.com.facilit.kanban.application.project.SaveProjectCommand;
 import br.com.facilit.kanban.domain.project.Project;
@@ -37,11 +39,21 @@ public class ProjectGraphQlController {
     public ProjectGraphQlPage projects(
             @Argument int page,
             @Argument int size,
-            @Argument ProjectStatus status) {
+            @Argument ProjectStatus status,
+            @Argument String secretariatId,
+            @Argument String responsibleId,
+            @Argument String plannedFrom,
+            @Argument String plannedTo,
+            @Argument String text) {
         PageQuery pageQuery = new PageQuery(page, size);
-        PageResult<Project> result = status == null
-                ? service.list(pageQuery)
-                : service.listByStatus(status, pageQuery);
+        ProjectFilter filter = new ProjectFilter(
+                status,
+                parseUuid(secretariatId),
+                parseUuid(responsibleId),
+                parseDate(plannedFrom),
+                parseDate(plannedTo),
+                text);
+        PageResult<Project> result = service.search(filter, pageQuery);
         List<ProjectGraphQlResponse> content = result.content().stream()
                 .map(ProjectGraphQlResponse::from)
                 .toList();
@@ -52,6 +64,11 @@ public class ProjectGraphQlController {
                 result.totalPages(),
                 result.hasNext(),
                 result.hasPrevious());
+    }
+
+    @QueryMapping
+    public ProjectIndicatorsGraphQlResponse projectIndicators() {
+        return ProjectIndicatorsGraphQlResponse.from(service.indicators());
     }
 
     @MutationMapping
@@ -77,6 +94,14 @@ public class ProjectGraphQlController {
     public boolean deleteProject(@Argument String id) {
         service.delete(UUID.fromString(id));
         return true;
+    }
+
+    private static UUID parseUuid(String value) {
+        return value == null ? null : UUID.fromString(value);
+    }
+
+    private static LocalDate parseDate(String value) {
+        return value == null ? null : LocalDate.parse(value);
     }
 
     public record ProjectGraphQlInput(
@@ -152,4 +177,29 @@ public class ProjectGraphQlController {
             boolean hasNext,
             boolean hasPrevious) {
     }
+
+    public record ProjectIndicatorsGraphQlResponse(
+            long totalProjects,
+            long delayedProjects,
+            List<ProjectStatusIndicatorGraphQlResponse> byStatus) {
+
+        static ProjectIndicatorsGraphQlResponse from(ProjectIndicators indicators) {
+            return new ProjectIndicatorsGraphQlResponse(
+                    indicators.totalProjects(),
+                    indicators.delayedProjects(),
+                    indicators.byStatus().stream()
+                            .map(item -> new ProjectStatusIndicatorGraphQlResponse(
+                                    item.status().name(),
+                                    item.projectCount(),
+                                    item.averageDelayDays()))
+                            .toList());
+        }
+    }
+
+    public record ProjectStatusIndicatorGraphQlResponse(
+            String status,
+            long projectCount,
+            double averageDelayDays) {
+    }
+
 }

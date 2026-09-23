@@ -84,6 +84,12 @@ public class ResponsiblePersistenceAdapter implements ResponsibleRepository {
         return !ids.isEmpty() && repository.countByIdIn(ids) == ids.size();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsBySecretariatId(UUID secretariatId) {
+        return repository.existsBySecretariatId(secretariatId);
+    }
+
     private static Responsible toDomain(ResponsibleJpaEntity entity) {
         return new Responsible(
                 entity.getId(),

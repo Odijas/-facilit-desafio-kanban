@@ -16,7 +16,9 @@ import { type AuthUser, logout } from "../../api/auth";
 import { getHealthStatus } from "../../api/health";
 import { navigate } from "../../app/navigation";
 import { AUTH_QUERY_KEY } from "../auth/authQuery";
+import { ProjectIndicatorsPanel } from "../indicators/ProjectIndicatorsPanel";
 import { KanbanBoard } from "../kanban/KanbanBoard";
+import { SecretariatPanel } from "../secretariats/SecretariatPanel";
 
 type DashboardPageProps = {
   user: AuthUser;
@@ -96,6 +98,8 @@ export function DashboardPage({ user }: DashboardPageProps) {
             </CardContent>
           </Card>
 
+          <ProjectIndicatorsPanel />
+          <SecretariatPanel />
           <KanbanBoard />
         </Stack>
       </Container>

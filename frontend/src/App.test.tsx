@@ -33,6 +33,14 @@ vi.mock("./features/kanban/KanbanBoard", () => ({
   KanbanBoard: () => <div>Quadro Kanban</div>,
 }));
 
+vi.mock("./features/indicators/ProjectIndicatorsPanel", () => ({
+  ProjectIndicatorsPanel: () => <div>Indicadores</div>,
+}));
+
+vi.mock("./features/secretariats/SecretariatPanel", () => ({
+  SecretariatPanel: () => <div>Secretarias</div>,
+}));
+
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
 const mockedLogin = vi.mocked(login);
 const mockedLogout = vi.mocked(logout);

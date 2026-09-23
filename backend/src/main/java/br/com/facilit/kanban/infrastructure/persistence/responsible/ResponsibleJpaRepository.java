@@ -11,4 +11,6 @@ public interface ResponsibleJpaRepository extends JpaRepository<ResponsibleJpaEn
     boolean existsByEmailIgnoreCaseAndIdNot(String email, UUID id);
 
     long countByIdIn(Set<UUID> ids);
+
+    boolean existsBySecretariatId(UUID secretariatId);
 }

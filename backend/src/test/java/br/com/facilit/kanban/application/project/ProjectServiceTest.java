@@ -77,6 +77,53 @@ class ProjectServiceTest {
     }
 
     @Test
+    void searchesProjectsAndBuildsIndicators() {
+        Project matching = service.create(new SaveProjectCommand(
+                "Portal do cidadão",
+                Set.of(responsibleId),
+                TODAY,
+                TODAY.plusDays(10),
+                null,
+                null));
+        projectRepository.assignResponsibleToSecretariat(
+                responsibleId,
+                UUID.fromString("10000000-0000-4000-8000-000000000001"));
+
+        var result = service.search(
+                new ProjectFilter(
+                        ProjectStatus.NOT_STARTED,
+                        UUID.fromString("10000000-0000-4000-8000-000000000001"),
+                        responsibleId,
+                        TODAY.minusDays(1),
+                        TODAY.plusDays(20),
+                        "  cidadão  "),
+                new PageQuery(0, 20));
+
+        assertThat(result.content()).containsExactly(matching);
+        ProjectIndicators indicators = service.indicators();
+        assertThat(indicators.totalProjects()).isEqualTo(1);
+        assertThat(indicators.delayedProjects()).isZero();
+        assertThat(indicators.byStatus()).containsExactly(
+                new ProjectStatusIndicator(ProjectStatus.NOT_STARTED, 1, 0),
+                new ProjectStatusIndicator(ProjectStatus.IN_PROGRESS, 0, 0),
+                new ProjectStatusIndicator(ProjectStatus.OVERDUE, 0, 0),
+                new ProjectStatusIndicator(ProjectStatus.COMPLETED, 0, 0));
+    }
+
+    @Test
+    void rejectsInvertedAdvancedFilterPeriod() {
+        assertThatThrownBy(() -> new ProjectFilter(
+                        null,
+                        null,
+                        null,
+                        TODAY.plusDays(1),
+                        TODAY,
+                        null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("plannedTo must not be before plannedFrom");
+    }
+
+    @Test
     void rejectsProjectWithUnknownResponsible() {
         SaveProjectCommand command = new SaveProjectCommand(
                 "Portal",

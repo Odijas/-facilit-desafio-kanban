@@ -5,16 +5,18 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  MenuItem,
   Stack,
   TextField,
 } from "@mui/material";
 import { useEffect, useState } from "react";
-import type { ResponsibleInput } from "../../api/kanban";
+import type { ResponsibleInput, Secretariat } from "../../api/kanban";
 
 type ResponsibleDialogProps = {
   open: boolean;
   pending: boolean;
   errorMessage: string | null;
+  secretariats: Secretariat[];
   onClose: () => void;
   onSubmit: (input: ResponsibleInput) => void;
 };
@@ -23,18 +25,21 @@ export function ResponsibleDialog({
   open,
   pending,
   errorMessage,
+  secretariats,
   onClose,
   onSubmit,
 }: ResponsibleDialogProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [position, setPosition] = useState("");
+  const [secretariatId, setSecretariatId] = useState("");
 
   useEffect(() => {
     if (open) {
       setName("");
       setEmail("");
       setPosition("");
+      setSecretariatId("");
     }
   }, [open]);
 
@@ -80,6 +85,20 @@ export function ResponsibleDialog({
             value={position}
             onChange={(event) => setPosition(event.target.value)}
           />
+          <TextField
+            fullWidth
+            label="Secretaria"
+            select
+            value={secretariatId}
+            onChange={(event) => setSecretariatId(event.target.value)}
+          >
+            <MenuItem value="">Sem secretaria</MenuItem>
+            {secretariats.map((secretariat) => (
+              <MenuItem key={secretariat.id} value={secretariat.id}>
+                {secretariat.name}
+              </MenuItem>
+            ))}
+          </TextField>
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -93,7 +112,7 @@ export function ResponsibleDialog({
               name: name.trim(),
               email: email.trim(),
               position: position.trim(),
-              secretariatId: null,
+              secretariatId: secretariatId === "" ? null : secretariatId,
             })
           }
           variant="contained"
