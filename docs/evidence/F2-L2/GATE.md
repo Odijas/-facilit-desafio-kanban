@@ -2,18 +2,10 @@
 
 Data: 2026-09-22
 
-Estado: **CANDIDATE CORRIGIDO / aguardando reexecução local**.
+Estado: **GREEN**.
 
-Critérios para GREEN:
+`[EXECUTADO PELO USUÁRIO · 2026-09-22]` O gate corrigido concluiu com `F2_L2_PROXY_AUTH_GREEN`, `F2_L2_PROXY_LOGOUT_GREEN`, containers `db/backend/frontend` ativos e `Resultado: exit code 0`.
 
-- frontend `pnpm format`, `pnpm lint`, `pnpm typecheck`, `pnpm test` e `pnpm build` sem falhas;
-- suíte backend permanece GREEN;
-- login via frontend usa o contrato CSRF real do backend e cria sessão válida;
-- rota `/` exige sessão válida e redireciona anônimo para `/login`;
-- logout invalida a sessão e retorna para `/login`;
-- estados de loading e erro possuem cobertura unitária;
-- nenhum segredo é persistido no navegador;
-- frontend continua acessível via Docker Compose;
-- `git diff --check` limpo.
+`[VERIFICADO: docs/evidence/F2-L2/VERIFICACAO-USUARIO.md · 2026-09-22]` O shell usa `set -euo pipefail`; alcançar o final com exit code `0` confirma que formatação, lint, typecheck, testes, build, regressão backend, proxy real, autenticação, logout, scans estáticos e `git diff --check` não falharam.
 
-Promoção somente após `VERIFICACAO-USUARIO.md` terminar com `=== F2-L2 GREEN ===` e `Resultado: exit code 0`.
+F2-L2 é baseline promovida para F2-L3.

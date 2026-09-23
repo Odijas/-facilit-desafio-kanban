@@ -73,7 +73,7 @@ function readCookie(name: string): string {
   return decodeURIComponent(cookie.slice(prefix.length));
 }
 
-async function requestCsrf(): Promise<{ headerName: string; token: string }> {
+export async function getCsrfHeaders(): Promise<Record<string, string>> {
   const response = await fetch("/api/v1/auth/csrf", {
     credentials: "same-origin",
     headers: {
@@ -90,8 +90,7 @@ async function requestCsrf(): Promise<{ headerName: string; token: string }> {
 
   const descriptor = parseCsrfDescriptor(await response.json());
   return {
-    headerName: descriptor.headerName,
-    token: readCookie(descriptor.cookieName),
+    [descriptor.headerName]: readCookie(descriptor.cookieName),
   };
 }
 
@@ -113,15 +112,18 @@ export async function getCurrentUser(): Promise<AuthUser> {
   return parseAuthUser(await response.json());
 }
 
-export async function login(email: string, password: string): Promise<AuthUser> {
-  const csrf = await requestCsrf();
+export async function login(
+  email: string,
+  password: string,
+): Promise<AuthUser> {
+  const csrfHeaders = await getCsrfHeaders();
   const response = await fetch("/api/v1/auth/login", {
     method: "POST",
     credentials: "same-origin",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
-      [csrf.headerName]: csrf.token,
+      ...csrfHeaders,
     },
     body: JSON.stringify({ email, password }),
   });
@@ -139,16 +141,19 @@ export async function login(email: string, password: string): Promise<AuthUser> 
 }
 
 export async function logout(): Promise<void> {
-  const csrf = await requestCsrf();
+  const csrfHeaders = await getCsrfHeaders();
   const response = await fetch("/api/v1/auth/logout", {
     method: "POST",
     credentials: "same-origin",
     headers: {
-      [csrf.headerName]: csrf.token,
+      ...csrfHeaders,
     },
   });
 
   if (!response.ok) {
-    throw new AuthApiError("Unable to end the current session", response.status);
+    throw new AuthApiError(
+      "Unable to end the current session",
+      response.status,
+    );
   }
 }

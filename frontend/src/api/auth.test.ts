@@ -26,40 +26,37 @@ describe("auth API", () => {
     vi.unstubAllGlobals();
   });
 
-  it(
-    "sends the CSRF cookie value in the backend-provided header when logging in",
-    async () => {
-      cookieValue = "XSRF-TOKEN=csrf-token-value";
-      fetchMock
-        .mockResolvedValueOnce(
-          jsonResponse({
-            headerName: "X-XSRF-TOKEN",
-            cookieName: "XSRF-TOKEN",
-          }),
-        )
-        .mockResolvedValueOnce(
-          jsonResponse({
-            email: "admin@example.invalid",
-            authorities: ["ROLE_ADMIN"],
-          }),
-        );
-
-      const user = await login("admin@example.invalid", "secret-value");
-
-      expect(user.email).toBe("admin@example.invalid");
-      expect(fetchMock).toHaveBeenNthCalledWith(
-        2,
-        "/api/v1/auth/login",
-        expect.objectContaining({
-          method: "POST",
-          credentials: "same-origin",
-          headers: expect.objectContaining({
-            "X-XSRF-TOKEN": "csrf-token-value",
-          }),
+  it("sends the CSRF cookie value in the backend-provided header when logging in", async () => {
+    cookieValue = "XSRF-TOKEN=csrf-token-value";
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          headerName: "X-XSRF-TOKEN",
+          cookieName: "XSRF-TOKEN",
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          email: "admin@example.invalid",
+          authorities: ["ROLE_ADMIN"],
         }),
       );
-    },
-  );
+
+    const user = await login("admin@example.invalid", "secret-value");
+
+    expect(user.email).toBe("admin@example.invalid");
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/v1/auth/login",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "same-origin",
+        headers: expect.objectContaining({
+          "X-XSRF-TOKEN": "csrf-token-value",
+        }),
+      }),
+    );
+  });
 
   it("preserves the unauthorized status when the session is absent", async () => {
     fetchMock.mockResolvedValueOnce(
