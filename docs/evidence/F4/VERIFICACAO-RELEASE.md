@@ -1,0 +1,95 @@
+# F4 — VERIFICAÇÃO DA RELEASE 1.0.0
+
+Execute depois do passo 6 de `RELEASE.md`, com a `develop` ativa. O gate só lê: `git`, `git ls-remote` e a API pública do GitHub, sem token (até 45 requisições).
+
+O que ele confere:
+
+1. A `main` é o merge da `release/1.0.0` e contém a release inteira.
+2. A tag `v1.0.0` é anotada e aponta para a `main`.
+3. A `develop` contém a `release/1.0.0` (merge de volta do Gitflow).
+4. GitHub e GitLab têm as mesmas branches e tags.
+5. O CI da `main` está verde nos três jobs.
+6. A página inicial do repositório mostra o README da release.
+
+```sh
+awk 'BEGIN{f=0} /^```bash$/{f=1;next} /^```$/{if(f){exit}} f{print}' docs/evidence/F4/VERIFICACAO-RELEASE.md > /tmp/f4-release-gate.sh
+bash /tmp/f4-release-gate.sh
+```
+
+## Gate
+
+```bash
+bash <<'VERIFY'
+set -euo pipefail
+cd ~/proj/facilit-desafio-kanban
+fail() { echo "FALHA: $*" >&2; exit 1; }
+GITHUB_REPO="$(git remote get-url origin | sed -E 's#^(git@github\.com:|https://github\.com/)##; s#\.git$##')"
+API="https://api.github.com/repos/$GITHUB_REPO"
+
+echo '=== MAIN, TAG E DEVELOP ==='
+git fetch -q origin --tags || fail 'git fetch falhou (tag local diferente da publicada?)'
+MAIN_SHA="$(git rev-parse main)"
+RELEASE_SHA="$(git rev-parse release/1.0.0)"
+test "$(git rev-parse origin/main)" = "$MAIN_SHA" || fail 'main local difere de origin/main'
+test "$(git rev-list --parents -n 1 main | wc -w)" -eq 3 || fail 'main não é commit de merge'
+git merge-base --is-ancestor "$RELEASE_SHA" main || fail 'main não contém a release/1.0.0'
+test "$(git rev-parse 'main^{tree}')" = "$(git rev-parse 'release/1.0.0^{tree}')" || fail 'árvore da main difere da release'
+test "$(git cat-file -t v1.0.0)" = 'tag' || fail 'v1.0.0 não é tag anotada'
+test "$(git rev-parse 'v1.0.0^{commit}')" = "$MAIN_SHA" || fail 'v1.0.0 não aponta para a main'
+git merge-base --is-ancestor "$RELEASE_SHA" develop || fail 'develop não contém a release/1.0.0'
+echo "   main $MAIN_SHA = v1.0.0; release/1.0.0 $RELEASE_SHA"
+echo 'F4_RELEASE_REFS_GREEN'
+
+echo '=== GITHUB = GITLAB ==='
+git ls-remote --heads --tags gitlab | sort >/tmp/f4r-gitlab.txt
+git ls-remote --heads --tags origin | sort >/tmp/f4r-github.txt
+diff -u /tmp/f4r-gitlab.txt /tmp/f4r-github.txt || fail 'remotos divergentes'
+grep -q "refs/tags/v1.0.0$" /tmp/f4r-github.txt || fail 'tag v1.0.0 ausente no GitHub'
+echo "   refs iguais nos dois remotos: $(wc -l </tmp/f4r-github.txt)"
+rm -f /tmp/f4r-*.txt
+echo 'F4_RELEASE_REMOTES_GREEN'
+
+echo '=== CI DA MAIN ==='
+STATE=""
+for i in $(seq 1 35); do
+  curl -fsS -H 'Accept: application/vnd.github+json' "$API/actions/runs?head_sha=$MAIN_SHA&event=push&per_page=50" >/tmp/f4r-runs.json
+  STATE="$(python3 - <<'PY'
+import json
+runs = [r for r in json.load(open('/tmp/f4r-runs.json', encoding='utf-8'))['workflow_runs']
+        if r.get('path', '').startswith('.github/workflows/ci.yml') and r.get('head_branch') == 'main']
+if not runs:
+    print('none -')
+else:
+    run = max(runs, key=lambda r: r['run_attempt'] * 10**12 + r['id'])
+    print(f"{run['status']}:{run['conclusion']} {run['id']} {run['html_url']}")
+PY
+)"
+  echo "   [$i] $STATE"
+  case "$STATE" in
+    completed:success*) break ;;
+    completed:*) fail 'CI da main terminou sem sucesso' ;;
+  esac
+  if [ "$i" -eq 35 ]; then fail 'CI da main não concluiu em 35 minutos'; fi
+  sleep 60
+done
+RUN="$(echo "$STATE" | cut -d' ' -f2)"
+curl -fsS -H 'Accept: application/vnd.github+json' "$API/actions/runs/$RUN/jobs?per_page=50" >/tmp/f4r-jobs.json
+python3 -c "import json; jobs = {j['name']: j['conclusion'] for j in json.load(open('/tmp/f4r-jobs.json'))['jobs']}; print('  ', jobs); assert jobs == {'frontend': 'success', 'backend': 'success', 'repository': 'success'}, jobs"
+rm -f /tmp/f4r-*.json
+echo 'F4_RELEASE_CI_GREEN'
+
+echo '=== PÁGINA DO REPOSITÓRIO ==='
+curl -fsS -H 'Accept: application/vnd.github+json' "$API" >/tmp/f4r-repo.json
+python3 -c "import json; r = json.load(open('/tmp/f4r-repo.json')); assert r['private'] is False and r['default_branch'] == 'main', (r['private'], r['default_branch']); print('   público, branch padrão main')"
+curl -fsS "https://raw.githubusercontent.com/$GITHUB_REPO/v1.0.0/README.md" | grep -q 'F4 — Freeze e release `v1.0.0`' || fail 'README da tag sem o estado da release'
+rm -f /tmp/f4r-*.json
+echo 'F4_RELEASE_PAGE_GREEN'
+
+printf '%s\n' '=== F4 RELEASE GREEN ==='
+VERIFY
+
+STATUS=$?
+echo "Resultado: exit code $STATUS"
+```
+
+GREEN exige `F4_RELEASE_REFS_GREEN`, `F4_RELEASE_REMOTES_GREEN`, `F4_RELEASE_CI_GREEN`, `F4_RELEASE_PAGE_GREEN`, `=== F4 RELEASE GREEN ===` e `Resultado: exit code 0`.
