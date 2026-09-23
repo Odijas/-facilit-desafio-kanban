@@ -20,7 +20,9 @@ Projeto para o desafio técnico de Backend Sênior: API Java para gestão de pro
 
 **F1 — Backend funcional: GREEN em 2026-09-22.**
 
-**F2-L1 — Segurança: CANDIDATE em 2026-09-22, aguardando gate local.**
+**F2-L1 — Segurança: GREEN em 2026-09-22.**
+
+**F2-L2 — Fundação frontend autenticada: CANDIDATE em 2026-09-22, aguardando gate local.**
 
 A fundação contém:
 
@@ -107,4 +109,11 @@ O F1-L3 padroniza erros REST/GraphQL com códigos estáveis, reforça Bean Valid
 
 ## F2-L1 — Segurança
 
-O candidato F2-L1 adiciona Spring Security com autenticação por e-mail/senha, conta administrativa persistida no PostgreSQL, senha armazenada somente por `DelegatingPasswordEncoder`/bcrypt, sessão HTTP com cookie `HttpOnly`/`SameSite=Lax`, autorização `ROLE_ADMIN`, CSRF compatível com SPA por cookie `XSRF-TOKEN`, login/logout, respostas 401/403 sem detalhes sensíveis e testes de integração específicos. REST de health e documentação permanecem públicos; os endpoints de negócio REST e `/graphql` exigem autenticação.
+O F2-L1 adiciona Spring Security com autenticação por e-mail/senha, conta administrativa persistida no PostgreSQL, senha armazenada somente por `DelegatingPasswordEncoder`/bcrypt, sessão HTTP com cookie `HttpOnly`/`SameSite=Lax`, autorização `ROLE_ADMIN`, CSRF compatível com SPA por cookie `XSRF-TOKEN`, login/logout, respostas 401/403 sem detalhes sensíveis e testes de integração específicos. REST de health e documentação permanecem públicos; os endpoints de negócio REST e `/graphql` exigem autenticação.
+
+
+## F2-L2 — Fundação frontend autenticada
+
+O candidato F2-L2 conecta o frontend ao contrato de autenticação já validado no F2-L1. A aplicação passa a ter rota de login e área protegida, sessão validada por `GET /api/v1/auth/me`, login/logout com CSRF obtido do backend, estados explícitos de carregamento e erro e uma estrutura visual Material UI consistente para o painel. O estado remoto de autenticação permanece em React Query; nenhuma credencial é persistida em `localStorage` ou `sessionStorage`.
+
+O roteamento deste lote cobre somente `/login` e `/` usando a History API nativa do navegador. Essa escolha evita dependência adicional para duas rotas e mantém o diff mínimo; a decisão deve ser reavaliada apenas se a navegação do F2-L3 exigir uma árvore de rotas maior.
