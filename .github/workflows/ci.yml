@@ -1,0 +1,90 @@
+# CI do desafio Kanban: build, testes e análise estática do frontend e do backend.
+# Segurança (docs.github.com, "Secure use reference"): token só de leitura, actions
+# fixadas por SHA completo, sem pull_request_target, sem runner próprio e sem segredos.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Node.js 24
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+      - name: pnpm 12.5.1 (corepack)
+        run: |
+          corepack enable
+          corepack prepare pnpm@12.5.1 --activate
+      - name: Instalar dependências (lockfile congelado)
+        run: pnpm install --frozen-lockfile
+      - name: Lint e formatação (Biome)
+        run: pnpm lint
+      - name: Typecheck (TypeScript strict)
+        run: pnpm typecheck
+      - name: Tipagem estrita sem any, as e non-null
+        run: pnpm check:strict
+      - name: Testes (Vitest)
+        run: pnpm test
+      - name: Build (Vite)
+        run: pnpm build
+
+  backend:
+    name: backend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: JDK 25 (Temurin) com cache Maven
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - name: Build, testes unitários e de integração (Testcontainers)
+        run: mvn -B -ntp clean verify
+
+  repository:
+    name: repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Espaços em branco (git diff --check sobre a árvore inteira)
+        run: git diff --check "$(git hash-object -t tree /dev/null)" HEAD
+      - name: Sem armazenamento de credencial no navegador
+        run: |
+          if grep -RInE 'localStorage|sessionStorage' frontend/src; then
+            exit 1
+          fi
+      - name: Sem arquivo .env versionado
+        run: test -z "$(git ls-files .env '*.pem' '*.key' '*.p12')"
