@@ -2,13 +2,28 @@ extend type Query {
   responsible(id: ID!): Responsible!
   responsibles(page: Int = 0, size: Int = 20): ResponsiblePage!
   project(id: ID!): Project!
-  projects(page: Int = 0, size: Int = 20, status: ProjectStatus): ProjectPage!
+  projects(
+    page: Int = 0
+    size: Int = 20
+    status: ProjectStatus
+    secretariatId: ID
+    responsibleId: ID
+    plannedFrom: String
+    plannedTo: String
+    text: String
+  ): ProjectPage!
+  projectIndicators: ProjectIndicators!
+  secretariat(id: ID!): Secretariat!
+  secretariats(page: Int = 0, size: Int = 20): SecretariatPage!
 }
 
 type Mutation {
   createResponsible(input: ResponsibleInput!): Responsible!
   updateResponsible(id: ID!, input: ResponsibleInput!): Responsible!
   deleteResponsible(id: ID!): Boolean!
+  createSecretariat(input: SecretariatInput!): Secretariat!
+  updateSecretariat(id: ID!, input: SecretariatInput!): Secretariat!
+  deleteSecretariat(id: ID!): Boolean!
   createProject(input: ProjectInput!): Project!
   updateProject(id: ID!, input: ProjectInput!): Project!
   transitionProject(id: ID!, status: ProjectStatus!): Project!
@@ -79,4 +94,36 @@ type ProjectPage {
   totalPages: Int!
   hasNext: Boolean!
   hasPrevious: Boolean!
+}
+
+input SecretariatInput {
+  name: String!
+}
+
+type Secretariat {
+  id: ID!
+  name: String!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type SecretariatPage {
+  content: [Secretariat!]!
+  page: Int!
+  size: Int!
+  totalPages: Int!
+  hasNext: Boolean!
+  hasPrevious: Boolean!
+}
+
+type ProjectIndicators {
+  totalProjects: Int!
+  delayedProjects: Int!
+  byStatus: [ProjectStatusIndicator!]!
+}
+
+type ProjectStatusIndicator {
+  status: ProjectStatus!
+  projectCount: Int!
+  averageDelayDays: Float!
 }

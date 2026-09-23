@@ -2,6 +2,7 @@ package br.com.facilit.kanban.delivery.rest;
 
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
+import br.com.facilit.kanban.application.project.ProjectFilter;
 import br.com.facilit.kanban.application.project.ProjectService;
 import br.com.facilit.kanban.application.project.SaveProjectCommand;
 import br.com.facilit.kanban.domain.project.Project;
@@ -15,7 +16,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.UUID;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -102,15 +105,27 @@ public class ProjectRestController {
     }
 
     @GetMapping
-    @Operation(summary = "Lista projetos com paginação e filtro opcional por status")
+    @Operation(summary = "Lista projetos com paginação e filtros avançados")
     public PageResponse<ProjectResponse> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) ProjectStatus status) {
+            @RequestParam(required = false) ProjectStatus status,
+            @RequestParam(required = false) UUID secretariatId,
+            @RequestParam(required = false) UUID responsibleId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate plannedFrom,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate plannedTo,
+            @RequestParam(required = false) String text) {
         PageQuery pageQuery = new PageQuery(page, size);
-        PageResult<Project> result = status == null
-                ? service.list(pageQuery)
-                : service.listByStatus(status, pageQuery);
+        ProjectFilter filter = new ProjectFilter(
+                status,
+                secretariatId,
+                responsibleId,
+                plannedFrom,
+                plannedTo,
+                text);
+        PageResult<Project> result = service.search(filter, pageQuery);
         return new PageResponse<>(
                 result.content().stream().map(ProjectResponse::from).toList(),
                 result.page(),
