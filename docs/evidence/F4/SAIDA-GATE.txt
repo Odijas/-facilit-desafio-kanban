@@ -1,0 +1,81 @@
+=== PRÉ-CONDIÇÕES DA RELEASE ===
+   HEAD a1acabb0644fc3b487b287aafbd5ee069ebf9c99 · GitHub Odijas/facilit-desafio-kanban
+   versão 1.0.0 em pom.xml, Dockerfile e package.json
+F4_PRECONDITIONS_GREEN
+=== FRONTEND: FORMAT + LINT + TYPECHECK + STRICT + TEST + BUILD ===
+   STRICT_TYPES_GREEN 31
+   Test Files  6 passed (6)
+   Tests  30 passed (30)
+   pnpm audit --prod (informativo): No known vulnerabilities found
+F4_FRONTEND_GREEN
+=== BACKEND: CLEAN VERIFY ===
+   linhas com 'deprecat' no log do Maven (ferramentas, informativo): 1
+         1 WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+   unitários: 13 classes, 64 testes, 0 falhas, 0 erros, 0 ignorados
+   integração: 3 classes, 13 testes, 0 falhas, 0 erros, 0 ignorados
+F4_BACKEND_GREEN
+=== ANÁLISE ESTÁTICA: WORKFLOW, REPOSITÓRIO, HISTÓRICO E COMMITS ===
+WORKFLOW_POLICY_OK actions=5 jobs=['backend', 'frontend', 'repository']
+   workflow OK
+WORKTREE_OK files=302
+HISTORY_SECRETS_OK
+   repositório e histórico OK
+   Conventional Commits: 33 commits (sem merges) desde 283ce5d
+   README, AI_USAGE, ADR, auditoria, revisão de segurança, diagramas, links e coleção OK
+F4_STATIC_GREEN
+=== DOCKER: BANCO LIMPO + MIGRATIONS DO ZERO + OBSERVABILIDADE ===
+   banco novo (facilit-kanban-f4); migrations V1 2 3 4 5 aplicadas do zero
+F4_DOCKER_CLEAN_DB_GREEN
+=== UI + SWAGGER ===
+   OpenAPI com 13 caminhos
+F4_UI_SWAGGER_GREEN
+=== REST + GRAPHQL: 21 CENÁRIOS DA COLEÇÃO (ADMIN) ===
+  ok 1 health REST
+  ok 2 projetos sem sessão
+  ok 3 CSRF antes do login
+  ok 4 login ADMIN
+  ok 5 CSRF renovado após login
+  ok 6 sessão atual
+  ok 7 criar secretaria
+  ok 8 criar responsável
+  ok 9 e-mail duplicado
+  ok 10 criar projeto
+  ok 11 projeto sem responsável
+  ok 12 transição A iniciar → Em andamento
+  ok 13 transição bloqueada Em andamento → Atrasado
+  ok 14 listar com filtros
+  ok 15 indicadores
+  ok 16 GraphQL projeto e indicadores
+  ok 17 excluir projeto
+  ok 18 excluir responsável
+  ok 19 excluir secretaria
+  ok 20 logout
+  ok 21 sessão encerrada
+F4_API_GREEN
+=== AUTENTICAÇÃO DO RESPONSÁVEL: LEGÍTIMO E ATAQUE ===
+  ok 22 login ADMIN com cabeçalhos
+  ok 23 ADMIN cria outro responsável
+  ok 24 ADMIN cria projeto alheio
+  ok 25 login do responsável de demonstração
+  ok 26 responsável cria o próprio projeto
+  ok 27 responsável transiciona o próprio projeto
+  ok 28 responsável altera projeto alheio
+  ok 29 responsável cria secretaria
+  ok 30 responsável define credencial
+  ok 31 GraphQL do responsável bloqueado
+  ok 32 responsável exclui o próprio projeto
+  ok 33 ADMIN exclui projeto alheio
+  ok 34 ADMIN exclui outro responsável
+F4_RESPONSIBLE_AUTH_GREEN
+=== REVISÃO DE SEGURANÇA EXECUTÁVEL ===
+   banco sem porta no host (portas do contêiner: ['5432/tcp'])
+F4_SECURITY_GREEN
+=== PROMETHEUS + GRAFANA + LOGS ECS ===
+   45 registros ECS no backend
+F4_OBSERVABILITY_GREEN
+=== CI DO COMMIT DA RELEASE ===
+   [1] completed:success 35898371714 https://github.com/Odijas/facilit-desafio-kanban/actions/runs/35898371714
+   {'frontend': 'success', 'repository': 'success', 'backend': 'success'}
+F4_CI_GREEN
+=== F4 GREEN ===
+Resultado: exit code 0

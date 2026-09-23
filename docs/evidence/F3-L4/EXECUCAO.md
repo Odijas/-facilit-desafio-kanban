@@ -74,3 +74,31 @@ Data: 2026-09-23
 ```text
 [DESCONHECIDO] reconstrução sobre o repositório real, migração e pipeline no GitHub. Resolve: RECONSTRUCAO-HISTORICO.md, MIGRACAO-GITHUB.md e gate CI.
 ```
+
+## Gate final GREEN (2026-09-23)
+
+```text
+[EXECUTADO PELO USUÁRIO · 2026-09-23] etapa 1, gate local rev3:
+  smoke por curl: "ok 1" … "ok 21", F3_L4_API_SMOKE_GREEN; F3_L4_STATIC_GREEN; === F3-L4 LOCAL GREEN ===; exit code 0
+[EXECUTADO PELO USUÁRIO · 2026-09-23] etapa 2, reconstrução do histórico:
+  SHA-256 dos 6 pacotes conferem; árvore atual f4e0fe849c7bef007af4cea19ed44f74d7e52a0e
+  backup em ~/Downloads/backup-kanban-20260923-140015
+  base idêntica no código; 65 arquivos novos em docs/ → a21b594 "docs: adiciona governança e evidências de F0 a F2-L1"
+  7 features com merge --no-ff; 36 commits novos na develop; HEAD develop 16ae837
+  REBUILD_PRECONDITIONS/BACKUP/BASE/LOTS/FINAL_GREEN; === F3-L4 HISTORICO GREEN ===; exit code 0
+[EXECUTADO PELO USUÁRIO · 2026-09-23] varredura de segredos em todas as branches antes da publicação:
+  WORKTREE_OK files=289; HISTORY_SECRETS_OK; F3_L4_REPOSITORY_GREEN; exit 0
+[EXECUTADO PELO USUÁRIO · 2026-09-23] etapa 3, migração:
+  git push origin --all → Everything up-to-date (GitLab já tinha as branches)
+  git clone --bare (797 objetos); develop da cópia = develop local (DEVELOP_OK); repositório renomeado e vazio (RENAME_OK)
+  git push --mirror git@github.com:Odijas/facilit-desafio-kanban.git → 9 branches novas, sem bloqueio da proteção de push
+  remotos: gitlab → gitlab.com, origin → github.com; develop e main rastreando origin
+[EXECUTADO PELO USUÁRIO · 2026-09-23] etapa 4, gate do pipeline:
+  local develop = github develop = 16ae8372108cd87efdc7640f46a47d3866e8db2c → F3_L4_CI_COMMIT_GREEN
+  refs: 9 (GitLab = GitHub) → F3_L4_CI_HISTORY_GREEN
+  default_branch main; público; sem .env → F3_L4_CI_REPOSITORY_GREEN
+  run 35894739171 completed:success; jobs repository, frontend, backend = success → F3_L4_CI_PIPELINE_GREEN
+  === F3-L4 GREEN ===; exit code 0
+```
+
+[CONCLUSÃO] F3-L4 promovido para GREEN.
