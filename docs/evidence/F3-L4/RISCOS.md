@@ -17,3 +17,9 @@ Data: 2026-09-23
 - `[VERIFICADO]` o backup da etapa 2 inclui o `.env` e deve permanecer só na máquina local.
 - `[HIPÓTESE]` a coleção deixa de ser executada automaticamente e pode divergir da API. Mitigações: o smoke em `curl` cobre os mesmos 21 cenários; a F4 é freeze (sem mudança de API); a checagem estática de schema e credenciais continua no gate.
 - `[VERIFICADO]` o smoke usa apenas `curl`, `python3` e `date` GNU, já presentes nos gates anteriores.
+
+## Fechamento — 2026-09-23
+
+- `[EXECUTADO PELO USUÁRIO]` o primeiro pipeline no GitHub passou nos três jobs. As hipóteses de Testcontainers no `ubuntu-24.04` e de pnpm via corepack no Node 24 do CI foram confirmadas.
+- `[EXECUTADO PELO USUÁRIO]` a varredura de segredos em todas as branches passou antes da publicação, e a proteção de push do GitHub não bloqueou nada.
+- `[VERIFICADO]` a `main` publicada fica no F2-L1 até a release `v1.0.0` da F4.

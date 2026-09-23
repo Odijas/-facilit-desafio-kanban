@@ -2,11 +2,7 @@
 
 Data: 2026-09-23
 
-Estado: **CANDIDATE rev3**.
-
-- Etapa 1 (gate local) GREEN no rev1 e no rev2.
-- Etapa 2 do rev2 parou com rollback: o `283ce5d` não tem `docs/`.
-- O rev3 troca o newman por smoke em `curl` (sem ferramenta depreciada) e aceita a documentação nunca commitada como commit próprio. Por isso as etapas 1 e 2 devem ser executadas de novo.
+Estado: **GREEN** (rev3, as quatro etapas em 2026-09-23). Histórico: rev1 e rev2 com a etapa 1 GREEN; a etapa 2 do rev2 parou com rollback porque o `283ce5d` não tinha `docs/`; o rev3 trocou o newman por `curl` e tratou a documentação nunca commitada.
 
 Escopo: Engenharia de entrega (`PROMPT-EXECUTIVO-KANBAN-v1.0.md`, antigo F3-L3; `docs/governance/REPLANEJAMENTO-F3.md` §5):
 
@@ -89,3 +85,31 @@ Executada pelo usuário: push das branches Gitflow no GitLab, `git clone --bare`
   PARADO + ROLLBACK; exit code 1
 [EXECUTADO PELO USUÁRIO · 2026-09-23] `pnpm install --frozen-lockfile 2>&1 | grep -i deprecat` → sem saída.
 ```
+
+## Evidência final recebida do usuário
+
+```text
+[EXECUTADO PELO USUÁRIO · 2026-09-23] etapa 1, gate local rev3:
+  smoke por curl: "ok 1" … "ok 21", F3_L4_API_SMOKE_GREEN; F3_L4_STATIC_GREEN; === F3-L4 LOCAL GREEN ===; exit code 0
+[EXECUTADO PELO USUÁRIO · 2026-09-23] etapa 2, reconstrução do histórico:
+  SHA-256 dos 6 pacotes conferem; árvore atual f4e0fe849c7bef007af4cea19ed44f74d7e52a0e
+  backup em ~/Downloads/backup-kanban-20260923-140015
+  base idêntica no código; 65 arquivos novos em docs/ → a21b594 "docs: adiciona governança e evidências de F0 a F2-L1"
+  7 features com merge --no-ff; 36 commits novos na develop; HEAD develop 16ae837
+  REBUILD_PRECONDITIONS/BACKUP/BASE/LOTS/FINAL_GREEN; === F3-L4 HISTORICO GREEN ===; exit code 0
+[EXECUTADO PELO USUÁRIO · 2026-09-23] varredura de segredos em todas as branches antes da publicação:
+  WORKTREE_OK files=289; HISTORY_SECRETS_OK; F3_L4_REPOSITORY_GREEN; exit 0
+[EXECUTADO PELO USUÁRIO · 2026-09-23] etapa 3, migração:
+  git push origin --all → Everything up-to-date (GitLab já tinha as branches)
+  git clone --bare (797 objetos); develop da cópia = develop local (DEVELOP_OK); repositório renomeado e vazio (RENAME_OK)
+  git push --mirror git@github.com:Odijas/facilit-desafio-kanban.git → 9 branches novas, sem bloqueio da proteção de push
+  remotos: gitlab → gitlab.com, origin → github.com; develop e main rastreando origin
+[EXECUTADO PELO USUÁRIO · 2026-09-23] etapa 4, gate do pipeline:
+  local develop = github develop = 16ae8372108cd87efdc7640f46a47d3866e8db2c → F3_L4_CI_COMMIT_GREEN
+  refs: 9 (GitLab = GitHub) → F3_L4_CI_HISTORY_GREEN
+  default_branch main; público; sem .env → F3_L4_CI_REPOSITORY_GREEN
+  run 35894739171 completed:success; jobs repository, frontend, backend = success → F3_L4_CI_PIPELINE_GREEN
+  === F3-L4 GREEN ===; exit code 0
+```
+
+Conclusão: F3-L4 promovido para GREEN em 2026-09-23. Com ele, a F3 inteira (F3-L1 a F3-L4) está GREEN.

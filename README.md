@@ -237,7 +237,9 @@ Estado dos lotes:
 - F3-L1 — Funcionalidades diferenciais: GREEN em 2026-09-23.
 - F3-L2 — Autenticação do responsável + erro seguro: GREEN em 2026-09-23.
 - F3-L3 — Observabilidade: GREEN em 2026-09-23.
-- F3-L4 — Engenharia de entrega: CANDIDATE em 2026-09-23, aguardando gate local e primeiro pipeline no GitHub.
+- F3-L4 — Engenharia de entrega: GREEN em 2026-09-23 (gate local, histórico por lote, migração para o GitHub e primeiro pipeline verde).
+- F3 — Diferenciais: GREEN em 2026-09-23.
+- F4 — Freeze e release `v1.0.0`: evidências em `docs/evidence/F4/` (auditoria requisito → implementação → teste → evidência, revisão de segurança, saída do gate de freeze).
 
 ### Resumo por lote
 
