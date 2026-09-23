@@ -67,8 +67,30 @@ Data: 2026-09-23
 [EXECUTADO · 2026-09-23] `bash -n` no gate extraído por awk → sem erro.
 ```
 
-## Não executado neste ambiente
+## Execução final pelo usuário
 
 ```text
-[DESCONHECIDO] mvn clean verify com JDK 25, Compose real do freeze, CI da release e verificação da release. Resolve: RELEASE.md, passos 4 a 7.
+[EXECUTADO PELO USUÁRIO · 2026-09-23] gate de freeze rev2 em release/1.0.0:
+  F4_PRECONDITIONS_GREEN
+  F4_FRONTEND_GREEN: 6 arquivos / 30 testes; build GREEN; pnpm audit --prod sem vulnerabilidades conhecidas
+  F4_BACKEND_GREEN: 64 testes unitários + 13 de integração; 0 falhas, 0 erros, 0 ignorados
+  F4_STATIC_GREEN; F4_DOCKER_CLEAN_DB_GREEN; F4_UI_SWAGGER_GREEN
+  F4_API_GREEN: 21 cenários ADMIN
+  F4_RESPONSIBLE_AUTH_GREEN: cenários 22–34, incluindo caminhos legítimos e de ataque
+  F4_SECURITY_GREEN: PostgreSQL sem porta publicada no host
+  F4_OBSERVABILITY_GREEN: 45 registros ECS
+  F4_CI_GREEN: run 35898371714, jobs frontend/backend/repository em success
+  === F4 GREEN ===; exit code 0
+
+[EXECUTADO PELO USUÁRIO · 2026-09-23] verificação final da release no GitHub:
+  main=a3497d894a6bb13058ad79a074ece93d583a3403
+  release/1.0.0=eef7a4a80cc93d1cc620855b2174c802d45ef216
+  develop=399f1c7e0415bd767389cb8ab1012b318656440a
+  F4_RELEASE_REFS_GREEN
+  F4_RELEASE_CI_GREEN: run 35908112482, jobs repository/backend/frontend em success
+  repositório público, branch padrão main
+  F4_RELEASE_PAGE_GREEN
+  === F4 RELEASE GREEN ===; exit code 0
+
+[VERIFICADO] evidências persistidas em SAIDA-GATE.txt e SAIDA-RELEASE.txt. O GitLab não integra o critério final de release porque o desafio exige repositório público no GitHub.
 ```
