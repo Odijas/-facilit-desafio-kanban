@@ -2,7 +2,7 @@
 
 Data: 2026-09-23
 
-Estado: **CANDIDATE / aguardando execução do roteiro da release**.
+Estado: **CANDIDATE rev2**. O rev1 ficou RED por falso positivo do próprio gate (checagem de porta do banco); a correção está só no gate.
 
 Escopo: freeze (`PROMPT-EXECUTIVO-KANBAN-v1.0.md`, F4). Não há feature nova. O único ajuste de código é a versão `1.0.0` (pom, Dockerfile, package.json), que faz parte da release.
 

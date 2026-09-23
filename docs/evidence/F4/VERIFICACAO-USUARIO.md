@@ -110,7 +110,7 @@ printf '%s\n' '=== FRONTEND: FORMAT + LINT + TYPECHECK + STRICT + TEST + BUILD =
     run_logged /tmp/f4-frontend.log pnpm $step
   done
 )
-grep -E 'STRICT_TYPES_GREEN|Test Files|Tests +[0-9]' /tmp/f4-frontend.log | sed 's/^/   /'
+sed 's/\x1b\[[0-9;]*m//g' /tmp/f4-frontend.log | grep -E 'STRICT_TYPES_GREEN|Test Files|Tests +[0-9]' | sed 's/^ */   /' || true
 if grep -qi 'deprecat' /tmp/f4-frontend.log; then grep -i 'deprecat' /tmp/f4-frontend.log >&2; fail 'aviso de depreciação no frontend'; fi
 if [ -n "$(git status --porcelain=v1)" ]; then git status --short >&2; fail 'o format alterou arquivos (código não formatado na release)'; fi
 (cd frontend && pnpm audit --prod >/tmp/f4-audit.txt 2>&1) || true
@@ -481,7 +481,18 @@ for path in /actuator/env /actuator/heapdump /actuator/beans /actuator/metrics; 
 done
 test "$("${DC[@]}" port prometheus 9090)" = '127.0.0.1:9090' || fail 'Prometheus fora de 127.0.0.1'
 test "$("${DC[@]}" port grafana 3000)" = '127.0.0.1:3000' || fail 'Grafana fora de 127.0.0.1'
-test -z "$("${DC[@]}" port db 5432 2>/dev/null || true)" || fail 'PostgreSQL publicado no host'
+# Portas publicadas lidas no próprio contêiner (o `docker compose port` não fica vazio para porta não publicada).
+DB_CONTAINER="$("${DC[@]}" ps -q db)"
+test -n "$DB_CONTAINER" || fail 'contêiner do banco não encontrado'
+docker inspect -f '{"bindings": {{json .HostConfig.PortBindings}}, "ports": {{json .NetworkSettings.Ports}}}' "$DB_CONTAINER" >/tmp/f4-db-ports.json
+python3 - <<'PY'
+import json, sys
+data = json.load(open('/tmp/f4-db-ports.json', encoding='utf-8'))
+published = {port: hosts for section in data.values() for port, hosts in (section or {}).items() if hosts}
+if published:
+    sys.exit(f'FALHA: PostgreSQL publicado no host: {published}')
+print(f"   banco sem porta no host (portas do contêiner: {sorted((data['ports'] or {}).keys())})")
+PY
 echo 'F4_SECURITY_GREEN'
 
 echo '=== PROMETHEUS + GRAFANA + LOGS ECS ==='

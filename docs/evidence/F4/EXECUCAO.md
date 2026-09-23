@@ -36,6 +36,37 @@ Data: 2026-09-23
 [VERIFICADO] AUDITORIA.md dizia "16 transições" para ProjectStatusTransitionTest; o correto é 17 testes cobrindo as 12 transições da tabela e a rejeição do mesmo status.
 ```
 
+## rev1 — RED no gate do usuário (2026-09-23)
+
+```text
+[EXECUTADO PELO USUÁRIO · 2026-09-23] release/1.0.0 com 3 commits (f49090e build, 2161f2c docs(F3-L4), b8d7017 docs(F4)), publicada no GitHub e no GitLab.
+[EXECUTADO PELO USUÁRIO · 2026-09-23] gate de freeze rev1:
+  F4_PRECONDITIONS_GREEN (HEAD b8d7017722680826f4f34d61fabab258a864dc09)
+  F4_FRONTEND_GREEN: STRICT_TYPES_GREEN 31; Test Files 6 passed (6); pnpm audit --prod: No known vulnerabilities found
+  F4_BACKEND_GREEN: unitários 13 classes / 64 testes; integração 3 classes / 13 testes; 0 falhas, 0 erros, 0 ignorados
+    aviso informativo da ferramenta: "WARNING: A terminally deprecated method in sun.misc.Unsafe has been called" (1 linha, Maven no JDK 25)
+  F4_STATIC_GREEN: WORKTREE_OK files=302; HISTORY_SECRETS_OK; 32 Conventional Commits desde 283ce5d
+  F4_DOCKER_CLEAN_DB_GREEN: projeto facilit-kanban-f4; migrations 1 2 3 4 5
+  F4_UI_SWAGGER_GREEN: OpenAPI com 13 caminhos
+  F4_API_GREEN: ok 1 … ok 21
+  F4_RESPONSIBLE_AUTH_GREEN: ok 22 … ok 34
+  REVISÃO DE SEGURANÇA: "FALHA: PostgreSQL publicado no host"; exit code 1
+[VERIFICADO] as checagens de segurança anteriores à falha passaram (set -e): flags do cookie, nosniff, X-Frame-Options DENY, CSRF, 404 sem detalhe interno, bcrypt, usuários de bootstrap, métricas 401, endpoints do Actuator, Prometheus e Grafana em 127.0.0.1.
+[ERRO PRÓPRIO] a checagem usava `docker compose port db 5432` e esperava saída vazia para porta não publicada. O compose.yaml não publica a porta do banco, e o `docker compose ps` do F3-L3 mostrou `5432/tcp` sem mapeamento. Logo, o comando imprimiu algo mesmo sem porta publicada; `:0` é a hipótese, a saída exata não foi vista. Eu não tinha verificado esse comportamento.
+[CORREÇÃO rev2] porta lida no contêiner: `docker inspect` de `HostConfig.PortBindings` e `NetworkSettings.Ports`; falha só se alguma porta tiver mapeamento para o host (porta exposta sem mapeamento aparece como `null`). O resumo do frontend passa a remover códigos de cor antes do grep (a linha "Tests 30 passed" não apareceu no rev1).
+```
+
+## rev2 — verificação local da correção
+
+```text
+[EXECUTADO · 2026-09-23] trecho novo da checagem de porta contra JSON de docker inspect:
+  porta exposta sem mapeamento ({"5432/tcp": null}, bindings {}) → "banco sem porta no host", exit 0
+  bindings null → exit 0
+  porta publicada (HostPort 5432) → "FALHA: PostgreSQL publicado no host: {...}", exit 1
+[EXECUTADO · 2026-09-23] filtro do resumo do frontend contra linha colorida do Vitest → "Tests  30 passed (30)" exibida.
+[EXECUTADO · 2026-09-23] `bash -n` no gate extraído por awk → sem erro.
+```
+
 ## Não executado neste ambiente
 
 ```text
