@@ -16,6 +16,7 @@ import { type AuthUser, logout } from "../../api/auth";
 import { getHealthStatus } from "../../api/health";
 import { navigate } from "../../app/navigation";
 import { AUTH_QUERY_KEY } from "../auth/authQuery";
+import { isAdministrator } from "../auth/permissions";
 import { ProjectIndicatorsPanel } from "../indicators/ProjectIndicatorsPanel";
 import { KanbanBoard } from "../kanban/KanbanBoard";
 import { SecretariatPanel } from "../secretariats/SecretariatPanel";
@@ -26,6 +27,7 @@ type DashboardPageProps = {
 
 export function DashboardPage({ user }: DashboardPageProps) {
   const queryClient = useQueryClient();
+  const administrator = isAdministrator(user);
   const healthQuery = useQuery({
     queryKey: ["health"],
     queryFn: () => getHealthStatus(),
@@ -69,10 +71,14 @@ export function DashboardPage({ user }: DashboardPageProps) {
           )}
           <Box>
             <Typography component="h1" variant="h4" sx={{ fontWeight: 700 }}>
-              Painel administrativo
+              {administrator
+                ? "Painel administrativo"
+                : "Painel do responsável"}
             </Typography>
             <Typography color="text.secondary" sx={{ mt: 1 }}>
-              Gerencie projetos e responsáveis no quadro Kanban.
+              {administrator
+                ? "Gerencie projetos e responsáveis no quadro Kanban."
+                : "Acompanhe o quadro e gerencie os projetos sob sua responsabilidade."}
             </Typography>
           </Box>
 
@@ -99,8 +105,8 @@ export function DashboardPage({ user }: DashboardPageProps) {
           </Card>
 
           <ProjectIndicatorsPanel />
-          <SecretariatPanel />
-          <KanbanBoard />
+          <SecretariatPanel canManage={administrator} />
+          <KanbanBoard user={user} />
         </Stack>
       </Container>
     </Box>

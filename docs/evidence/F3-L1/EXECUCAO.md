@@ -131,3 +131,30 @@ Defeito no artefato de verificação, não no código de produção: a consulta 
 [EXECUTADO · 2026-09-22] gate rev4 extraído por awk e `bash -n`: sintaxe válida.
 [DESCONHECIDO] etapas do gate após GraphQL (update/bloqueio/CRUD de secretaria, OpenAPI, scan estrito, git diff --check) ainda não executadas. Resolve: gate local.
 ```
+
+## Gate final GREEN (2026-09-23)
+
+```text
+[EXECUTADO PELO USUÁRIO · 2026-09-23] gate rev4 (trecho recebido a partir do health):
+  health => {"status":"UP"}
+  F3_L1_AUTH_GREEN
+  F3_L1_SECRETARIAT_CREATE_GREEN
+  F3_L1_RESPONSIBLE_GREEN
+  F3_L1_PROJECT_FIXTURES_GREEN
+  F3_L1_LIST_UNFILTERED_GREEN
+  F3_L1_FILTERS_REST_GREEN
+  F3_L1_FILTER_VALIDATION_GREEN
+  F3_L1_INDICATORS_REST_GREEN
+  F3_L1_GRAPHQL_GREEN
+  F3_L1_SECRETARIAT_UPDATE_GREEN
+  F3_L1_SECRETARIAT_BLOCK_GREEN
+  F3_L1_CRUD_GREEN
+  F3_L1_STRICT_TYPES_GREEN 30
+  docker compose ps: db healthy; backend e frontend up
+  F3_L1_STATIC_GREEN
+  === F3-L1 GREEN ===
+  Resultado: exit code 0
+[VERIFICADO: script com `set -euo pipefail`] F3_L1_RECONCILIATION_GREEN, F3_L1_FRONTEND_GREEN e F3_L1_BACKEND_GREEN precedem o Docker Compose; o exit code 0 final só ocorre se todas as etapas anteriores terminarem com sucesso. Os três marcadores não constam do trecho recebido.
+[VERIFICADO: script] OpenAPI (`/api/v1/secretariats`, `/api/v1/indicators/projects`), ausência de localStorage/sessionStorage e `git diff --check` executam antes de F3_L1_STATIC_GREEN.
+```
+[CONCLUSÃO] F3-L1 promovido para GREEN.

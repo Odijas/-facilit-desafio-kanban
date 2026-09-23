@@ -3,6 +3,9 @@ package br.com.facilit.kanban.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,7 +69,7 @@ class SecurityApiIT {
 
     @Test
     void authenticatesWithSessionAndRequiresCsrfForStateChanges() {
-        AuthenticatedSession session = login("security-admin@example.invalid", "security-test-password");
+        AuthenticatedSession session = login("security-admin@example.invalid", "security-test-password", "ROLE_ADMIN");
 
         HttpHeaders meHeaders = new HttpHeaders();
         meHeaders.set(HttpHeaders.COOKIE, session.sessionCookie());
@@ -128,7 +131,7 @@ class SecurityApiIT {
         assertThat(badLogin.getBody().path("code").asText()).isEqualTo("UNAUTHORIZED");
         assertThat(badLogin.getBody().path("detail").asText()).isEqualTo("Invalid email or password");
 
-        AuthenticatedSession session = login("security-admin@example.invalid", "security-test-password");
+        AuthenticatedSession session = login("security-admin@example.invalid", "security-test-password", "ROLE_ADMIN");
         ResponseEntity<JsonNode> refreshedCsrf = csrf(session.sessionCookie());
         requireBody(refreshedCsrf, HttpStatus.OK);
         String csrfCookie = cookie(refreshedCsrf.getHeaders(), "XSRF-TOKEN");
@@ -153,10 +156,161 @@ class SecurityApiIT {
         assertThat(afterLogout.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
-    private AuthenticatedSession login(String email, String password) {
+    @Test
+    void responsibleAuthenticatesAndManagesOnlyOwnProjects() {
+        AuthenticatedSession admin = login("security-admin@example.invalid", "security-test-password", "ROLE_ADMIN");
+        String ownerId = requireBody(send(admin, HttpMethod.POST, "/api/v1/responsibles", Map.of(
+                "name", "Responsável dono",
+                "email", "owner-responsible@example.invalid",
+                "position", "Analista")), HttpStatus.CREATED).path("id").asText();
+        String otherId = requireBody(send(admin, HttpMethod.POST, "/api/v1/responsibles", Map.of(
+                "name", "Outro responsável",
+                "email", "other-responsible@example.invalid",
+                "position", "Gestor")), HttpStatus.CREATED).path("id").asText();
+
+        ResponseEntity<JsonNode> weakPassword = send(admin, HttpMethod.PUT,
+                "/api/v1/responsibles/" + ownerId + "/credentials", Map.of("password", "curta"));
+        assertThat(requireBody(weakPassword, HttpStatus.BAD_REQUEST).path("code").asText())
+                .isEqualTo("INVALID_REQUEST");
+        assertThat(send(admin, HttpMethod.PUT, "/api/v1/responsibles/" + ownerId + "/credentials",
+                Map.of("password", "responsible-test-password")).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        String storedPassword = jdbcTemplate.queryForObject(
+                "SELECT password_hash FROM app_users WHERE responsible_id = ?::uuid",
+                String.class,
+                ownerId);
+        assertThat(storedPassword).startsWith("{bcrypt}").doesNotContain("responsible-test-password");
+
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        String otherProjectId = requireBody(send(admin, HttpMethod.POST, "/api/v1/projects", Map.of(
+                "name", "Projeto de outro responsável",
+                "responsibleIds", List.of(otherId),
+                "plannedStart", today.toString(),
+                "plannedEnd", today.plusDays(10).toString())), HttpStatus.CREATED).path("id").asText();
+
+        AuthenticatedSession owner = login(
+                "owner-responsible@example.invalid", "responsible-test-password", "ROLE_RESPONSIBLE");
+        HttpHeaders meHeaders = new HttpHeaders();
+        meHeaders.set(HttpHeaders.COOKIE, owner.sessionCookie());
+        JsonNode me = requireBody(restTemplate.exchange(
+                url("/api/v1/auth/me"), HttpMethod.GET, new HttpEntity<>(meHeaders), JsonNode.class),
+                HttpStatus.OK);
+        assertThat(me.path("responsibleId").asText()).isEqualTo(ownerId);
+
+        String ownProjectId = requireBody(send(owner, HttpMethod.POST, "/api/v1/projects", Map.of(
+                "name", "Projeto próprio",
+                "responsibleIds", List.of(ownerId),
+                "plannedStart", today.toString(),
+                "plannedEnd", today.plusDays(10).toString())), HttpStatus.CREATED).path("id").asText();
+        JsonNode transitioned = requireBody(send(owner, HttpMethod.PATCH,
+                "/api/v1/projects/" + ownProjectId + "/status", Map.of("status", "IN_PROGRESS")), HttpStatus.OK);
+        assertThat(transitioned.path("status").asText()).isEqualTo("IN_PROGRESS");
+
+        assertForbidden(send(owner, HttpMethod.PATCH,
+                "/api/v1/projects/" + otherProjectId + "/status", Map.of("status", "IN_PROGRESS")));
+        assertForbidden(send(owner, HttpMethod.PUT, "/api/v1/projects/" + otherProjectId, Map.of(
+                "name", "Tomado",
+                "responsibleIds", List.of(ownerId))));
+        assertForbidden(send(owner, HttpMethod.DELETE, "/api/v1/projects/" + otherProjectId, null));
+        assertForbidden(send(owner, HttpMethod.POST, "/api/v1/projects", Map.of(
+                "name", "Sem o dono",
+                "responsibleIds", List.of(otherId))));
+        assertForbidden(send(owner, HttpMethod.POST, "/api/v1/responsibles", Map.of(
+                "name", "Indevido",
+                "email", "indevido@example.invalid",
+                "position", "Analista")));
+        assertForbidden(send(owner, HttpMethod.PUT, "/api/v1/responsibles/" + otherId, Map.of(
+                "name", "Outro responsável",
+                "email", "takeover@example.invalid",
+                "position", "Gestor")));
+        assertForbidden(send(owner, HttpMethod.POST, "/api/v1/secretariats", Map.of("name", "Indevida")));
+        assertForbidden(send(owner, HttpMethod.PUT, "/api/v1/responsibles/" + otherId + "/credentials",
+                Map.of("password", "responsible-test-password")));
+
+        JsonNode graphqlDenied = requireBody(send(owner, HttpMethod.POST, "/graphql", Map.of(
+                "query", "mutation { createSecretariat(input: {name: \"Indevida\"}) { id } }")), HttpStatus.OK);
+        assertThat(graphqlDenied.at("/errors/0/extensions/code").asText()).isEqualTo("FORBIDDEN");
+
+        HttpHeaders ownerRead = new HttpHeaders();
+        ownerRead.set(HttpHeaders.COOKIE, owner.sessionCookie());
+        JsonNode board = requireBody(restTemplate.exchange(
+                url("/api/v1/projects?page=0&size=100"), HttpMethod.GET, new HttpEntity<>(ownerRead), JsonNode.class),
+                HttpStatus.OK);
+        assertThat(board.path("content").toString()).contains(otherProjectId).contains(ownProjectId);
+
+        assertThat(send(owner, HttpMethod.DELETE, "/api/v1/projects/" + ownProjectId, null).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+
+        requireBody(send(admin, HttpMethod.PUT, "/api/v1/responsibles/" + ownerId, Map.of(
+                "name", "Responsável dono",
+                "email", "owner-renamed@example.invalid",
+                "position", "Analista")), HttpStatus.OK);
+        String syncedEmail = jdbcTemplate.queryForObject(
+                "SELECT email FROM app_users WHERE responsible_id = ?::uuid",
+                String.class,
+                ownerId);
+        assertThat(syncedEmail).isEqualTo("owner-renamed@example.invalid");
+        ResponseEntity<JsonNode> adminEmailCollision = send(admin, HttpMethod.PUT, "/api/v1/responsibles/" + ownerId,
+                Map.of(
+                        "name", "Responsável dono",
+                        "email", "security-admin@example.invalid",
+                        "position", "Analista"));
+        assertThat(requireBody(adminEmailCollision, HttpStatus.CONFLICT).path("code").asText()).isEqualTo("CONFLICT");
+
+        assertThat(send(admin, HttpMethod.DELETE, "/api/v1/projects/" + otherProjectId, null).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(send(admin, HttpMethod.DELETE, "/api/v1/responsibles/" + ownerId + "/credentials", null)
+                .getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        Integer remainingCredentials = jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM app_users WHERE responsible_id = ?::uuid",
+                Integer.class,
+                ownerId);
+        assertThat(remainingCredentials).isZero();
+        assertThat(send(admin, HttpMethod.DELETE, "/api/v1/responsibles/" + ownerId, null).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(send(admin, HttpMethod.DELETE, "/api/v1/responsibles/" + otherId, null).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+    }
+
+    @Test
+    void unknownAuthenticatedRouteIsNotMaskedAsForbidden() {
+        AuthenticatedSession admin = login("security-admin@example.invalid", "security-test-password", "ROLE_ADMIN");
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.COOKIE, admin.sessionCookie());
+
+        ResponseEntity<JsonNode> response = restTemplate.exchange(
+                url("/api/v1/unknown-resource"),
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
+                JsonNode.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    private ResponseEntity<JsonNode> send(
+            AuthenticatedSession session,
+            HttpMethod method,
+            String path,
+            Object body) {
+        ResponseEntity<JsonNode> refreshedCsrf = csrf(session.sessionCookie());
+        requireBody(refreshedCsrf, HttpStatus.OK);
+        String csrfCookie = cookie(refreshedCsrf.getHeaders(), "XSRF-TOKEN");
+        HttpHeaders headers = jsonHeaders();
+        headers.set(HttpHeaders.COOKIE, session.sessionCookie() + "; " + csrfCookie);
+        headers.set("X-XSRF-TOKEN", cookieValue(csrfCookie));
+        return restTemplate.exchange(url(path), method, new HttpEntity<>(body, headers), JsonNode.class);
+    }
+
+    private static void assertForbidden(ResponseEntity<JsonNode> response) {
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().path("code").asText()).isEqualTo("FORBIDDEN");
+    }
+
+    private AuthenticatedSession login(String email, String password, String expectedAuthority) {
         ResponseEntity<JsonNode> response = loginRequest(email, password);
         JsonNode body = requireBody(response, HttpStatus.OK);
-        assertThat(body.path("authorities").toString()).contains("ROLE_ADMIN");
+        assertThat(body.path("authorities").toString()).contains(expectedAuthority);
         String sessionCookie = cookie(response.getHeaders(), "JSESSIONID");
         String setCookie = response.getHeaders().getOrEmpty(HttpHeaders.SET_COOKIE).stream()
                 .filter(value -> value.startsWith("JSESSIONID="))

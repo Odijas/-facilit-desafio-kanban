@@ -28,7 +28,9 @@ Projeto para o desafio técnico de Backend Sênior: API Java para gestão de pro
 
 **F2 — Segurança + UI: GREEN em 2026-09-22.**
 
-**F3-L1 — Funcionalidades diferenciais: CANDIDATE rev4 em 2026-09-22, aguardando gate local.**
+**F3-L1 — Funcionalidades diferenciais: GREEN em 2026-09-23.**
+
+**F3-L2 — Autenticação do responsável + erro seguro: CANDIDATE em 2026-09-23, aguardando gate local.**
 
 A fundação contém:
 
@@ -56,9 +58,12 @@ cd ..
 
 Depois, prepare o `.env` local. `APP_ADMIN_EMAIL` e `APP_ADMIN_PASSWORD` não possuem credenciais padrão e devem ser preenchidos localmente; `.env` permanece ignorado pelo Git. A senha de bootstrap é usada somente para criar o administrador quando ainda não existe e é persistida apenas como hash delegado/bcrypt.
 
+Opcionalmente, para demonstrar o perfil de responsável, preencha juntos `APP_DEMO_RESPONSIBLE_NAME`, `APP_DEMO_RESPONSIBLE_EMAIL`, `APP_DEMO_RESPONSIBLE_POSITION` e `APP_DEMO_RESPONSIBLE_PASSWORD` (mínimo de 12 caracteres). Na primeira subida, o sistema cria o responsável e a credencial dele; nas seguintes, não altera nada. Nenhuma credencial padrão é versionada.
+
 ```bash
 cp .env.example .env
 # edite .env e defina POSTGRES_PASSWORD, APP_ADMIN_EMAIL e APP_ADMIN_PASSWORD
+# opcional: APP_DEMO_RESPONSIBLE_NAME, _EMAIL, _POSITION e _PASSWORD
 docker compose up --build -d
 ```
 
@@ -135,6 +140,18 @@ A UI foi reorganizada por responsabilidade: `App.tsx` atua somente como composit
 
 ## F3-L1 — Funcionalidades diferenciais
 
-O candidato F3-L1 adiciona indicadores de projetos, incluindo quantidade por status, média de dias de atraso por status, total e quantidade com atraso; CRUD de Secretaria em REST e GraphQL; e filtros avançados de projetos por status, secretaria, responsável, interseção do período previsto e texto. REST e GraphQL reutilizam o mesmo `ProjectService` e o mesmo `ProjectFilter`.
+O F3-L1 adiciona indicadores de projetos, incluindo quantidade por status, média de dias de atraso por status, total e quantidade com atraso; CRUD de Secretaria em REST e GraphQL; e filtros avançados de projetos por status, secretaria, responsável, interseção do período previsto e texto. REST e GraphQL reutilizam o mesmo `ProjectService` e o mesmo `ProjectFilter`.
 
 No frontend, indicadores, gerenciamento de secretarias e filtros ficam em features focadas. O quadro continua responsável pela orquestração do Kanban e invalida indicadores quando mutações de projeto alteram a carteira. Os filtros relacionais e temporais usam os índices já existentes da migration V1/V3; a busca textual por substring permanece sem extensão PostgreSQL adicional para manter o diferencial de baixo risco.
+
+
+## F3-L2 — Autenticação do responsável + erro seguro
+
+O F3-L2 adiciona o perfil `RESPONSIBLE` ao lado do `ADMIN`, conforme o `docs/governance/REPLANEJAMENTO-F3.md`:
+
+- o ADMIN define ou revoga a senha de um responsável em `PUT`/`DELETE /api/v1/responsibles/{id}/credentials` ou pelas mutations GraphQL `setResponsibleCredentials`/`revokeResponsibleCredentials`; a senha exige no mínimo 12 caracteres e no máximo 72 bytes;
+- o responsável entra pelo mesmo `POST /api/v1/auth/login`; `GET /api/v1/auth/me` passa a informar `responsibleId`;
+- o responsável vê o quadro inteiro, os indicadores, os responsáveis e as secretarias, e cria, edita, transiciona e exclui apenas os projetos em que é responsável; responsáveis, secretarias e credenciais ficam só com o ADMIN;
+- a regra de posse fica na camada de aplicação (`Actor` informado aos casos de uso), reutilizada por REST e GraphQL;
+- o e-mail de login do responsável é copiado para `app_users` e sincronizado na mesma transação quando o ADMIN altera o e-mail do responsável; o índice único de login impede colisão com o e-mail do ADMIN (409);
+- erros inesperados passam a responder 500 com `code = INTERNAL_ERROR` e `incidentId`, sem detalhes internos; rotas inexistentes respondem 404 em vez de 403.

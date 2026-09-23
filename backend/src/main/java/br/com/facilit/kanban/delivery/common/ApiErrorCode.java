@@ -6,5 +6,6 @@ public enum ApiErrorCode {
     INVALID_REQUEST,
     VALIDATION_ERROR,
     UNAUTHORIZED,
-    FORBIDDEN
+    FORBIDDEN,
+    INTERNAL_ERROR
 }

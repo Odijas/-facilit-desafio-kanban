@@ -1,6 +1,7 @@
 export type AuthUser = {
   email: string;
   authorities: string[];
+  responsibleId: string | null;
 };
 
 export class AuthApiError extends Error {
@@ -33,7 +34,8 @@ function parseAuthUser(value: unknown): AuthUser {
   if (
     !isRecord(value) ||
     typeof value.email !== "string" ||
-    !isStringArray(value.authorities)
+    !isStringArray(value.authorities) ||
+    !(value.responsibleId === null || typeof value.responsibleId === "string")
   ) {
     throw new Error("Authentication endpoint returned an invalid payload");
   }
@@ -41,6 +43,7 @@ function parseAuthUser(value: unknown): AuthUser {
   return {
     email: value.email,
     authorities: value.authorities,
+    responsibleId: value.responsibleId,
   };
 }
 

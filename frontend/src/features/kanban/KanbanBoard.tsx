@@ -13,6 +13,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import type { AuthUser } from "../../api/auth";
 import {
   createProject,
   createResponsible,
@@ -29,6 +30,7 @@ import {
   transitionProject,
   updateProject,
 } from "../../api/kanban";
+import { canManageProject, isAdministrator } from "../auth/permissions";
 import { DeleteProjectDialog } from "./DeleteProjectDialog";
 import { KanbanColumn } from "./KanbanColumn";
 import { ProjectDialog } from "./ProjectDialog";
@@ -67,8 +69,13 @@ function operationErrorMessage(error: unknown): string {
     : "Não foi possível concluir a operação.";
 }
 
-export function KanbanBoard() {
+type KanbanBoardProps = {
+  user: AuthUser;
+};
+
+export function KanbanBoard({ user }: KanbanBoardProps) {
   const queryClient = useQueryClient();
+  const administrator = isAdministrator(user);
   const [filters, setFilters] = useState<ProjectFilters>({});
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [responsibleDialogOpen, setResponsibleDialogOpen] = useState(false);
@@ -218,15 +225,17 @@ export function KanbanBoard() {
           </Typography>
         </Box>
         <Stack direction="row" spacing={1}>
-          <Button
-            onClick={() => {
-              setOperationError(null);
-              setResponsibleDialogOpen(true);
-            }}
-            variant="outlined"
-          >
-            Novo responsável
-          </Button>
+          {administrator && (
+            <Button
+              onClick={() => {
+                setOperationError(null);
+                setResponsibleDialogOpen(true);
+              }}
+              variant="outlined"
+            >
+              Novo responsável
+            </Button>
+          )}
           <Button
             onClick={() => {
               setEditingProject(null);
@@ -272,6 +281,7 @@ export function KanbanBoard() {
             )}
             responsibleNames={responsibleNames}
             transitionPending={transitionMutation.isPending}
+            canManageProject={(project) => canManageProject(user, project)}
             onDeleteProject={setDeleteCandidate}
             onEditProject={(project) => {
               setEditingProject(project);
@@ -293,6 +303,7 @@ export function KanbanBoard() {
         open={projectDialogOpen}
         pending={projectPending}
         project={editingProject}
+        requiredResponsibleId={administrator ? null : user.responsibleId}
         responsibles={responsibles}
         onClose={() => {
           setProjectDialogOpen(false);

@@ -26,6 +26,9 @@ public class SecurityUserJpaEntity {
     @Column(nullable = false)
     private boolean enabled;
 
+    @Column(name = "responsible_id")
+    private UUID responsibleId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -43,13 +46,39 @@ public class SecurityUserJpaEntity {
             boolean enabled,
             Instant createdAt,
             Instant updatedAt) {
+        this(id, email, passwordHash, role, enabled, null, createdAt, updatedAt);
+    }
+
+    SecurityUserJpaEntity(
+            UUID id,
+            String email,
+            String passwordHash,
+            String role,
+            boolean enabled,
+            UUID responsibleId,
+            Instant createdAt,
+            Instant updatedAt) {
         this.id = id;
         this.email = email;
         this.passwordHash = passwordHash;
         this.role = role;
         this.enabled = enabled;
+        this.responsibleId = responsibleId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+    }
+
+    void replaceCredentials(String email, String passwordHash, Instant updatedAt) {
+        this.email = email;
+        this.passwordHash = passwordHash;
+        this.updatedAt = updatedAt;
+    }
+
+    public void changeEmail(String email, Instant updatedAt) {
+        if (!this.email.equals(email)) {
+            this.email = email;
+            this.updatedAt = updatedAt;
+        }
     }
 
     public UUID getId() {
@@ -70,6 +99,10 @@ public class SecurityUserJpaEntity {
 
     public boolean isEnabled() {
         return enabled;
+    }
+
+    public UUID getResponsibleId() {
+        return responsibleId;
     }
 
     public Instant getCreatedAt() {

@@ -21,6 +21,8 @@ type Mutation {
   createResponsible(input: ResponsibleInput!): Responsible!
   updateResponsible(id: ID!, input: ResponsibleInput!): Responsible!
   deleteResponsible(id: ID!): Boolean!
+  setResponsibleCredentials(responsibleId: ID!, password: String!): Boolean!
+  revokeResponsibleCredentials(responsibleId: ID!): Boolean!
   createSecretariat(input: SecretariatInput!): Secretariat!
   updateSecretariat(id: ID!, input: SecretariatInput!): Secretariat!
   deleteSecretariat(id: ID!): Boolean!

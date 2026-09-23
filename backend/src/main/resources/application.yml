@@ -41,3 +41,7 @@ app:
   security:
     bootstrap-admin-email: ${APP_ADMIN_EMAIL:}
     bootstrap-admin-password: ${APP_ADMIN_PASSWORD:}
+    bootstrap-responsible-name: ${APP_DEMO_RESPONSIBLE_NAME:}
+    bootstrap-responsible-email: ${APP_DEMO_RESPONSIBLE_EMAIL:}
+    bootstrap-responsible-position: ${APP_DEMO_RESPONSIBLE_POSITION:}
+    bootstrap-responsible-password: ${APP_DEMO_RESPONSIBLE_PASSWORD:}

@@ -2,6 +2,7 @@ package br.com.facilit.kanban.infrastructure.security;
 
 import br.com.facilit.kanban.delivery.common.ApiErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
@@ -66,6 +67,8 @@ public class SecurityConfiguration {
                         context.securityContextRepository(securityContextRepository))
                 .requestCache(cache -> cache.disable())
                 .authorizeHttpRequests(authorize -> authorize
+                        .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.ERROR)
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/health", "/api/v1/auth/csrf")
                         .permitAll()
                         .requestMatchers("/api/v1/auth/login")
@@ -78,7 +81,7 @@ public class SecurityConfiguration {
                                 "/graphiql/**")
                         .permitAll()
                         .requestMatchers("/api/v1/**", "/graphql")
-                        .hasRole("ADMIN")
+                        .hasAnyRole("ADMIN", "RESPONSIBLE")
                         .anyRequest()
                         .denyAll())
                 .exceptionHandling(exceptions -> exceptions

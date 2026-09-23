@@ -3,7 +3,9 @@ package br.com.facilit.kanban.application.secretariat;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import br.com.facilit.kanban.application.common.Actor;
 import br.com.facilit.kanban.application.common.ConflictException;
+import br.com.facilit.kanban.application.common.ForbiddenOperationException;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
 import br.com.facilit.kanban.application.support.InMemoryResponsibleRepository;
@@ -36,24 +38,24 @@ class SecretariatServiceTest {
 
     @Test
     void createsReadsListsUpdatesAndDeletesSecretariat() {
-        var created = service.create(new SaveSecretariatCommand("Secretaria de Tecnologia"));
+        var created = service.create(new SaveSecretariatCommand("Secretaria de Tecnologia"), Actor.admin());
 
         assertThat(created.audit().createdAt()).isEqualTo(NOW);
         assertThat(service.get(created.id())).isEqualTo(created);
         assertThat(service.list(new PageQuery(0, 20)).content()).containsExactly(created);
 
-        var updated = service.update(created.id(), new SaveSecretariatCommand("Secretaria Digital"));
+        var updated = service.update(created.id(), new SaveSecretariatCommand("Secretaria Digital"), Actor.admin());
         assertThat(updated.name()).isEqualTo("Secretaria Digital");
         assertThat(updated.audit().createdAt()).isEqualTo(created.audit().createdAt());
 
-        service.delete(created.id());
+        service.delete(created.id(), Actor.admin());
         assertThatThrownBy(() -> service.get(created.id()))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
     void blocksDeleteWhenSecretariatIsAssignedToResponsible() {
-        var secretariat = service.create(new SaveSecretariatCommand("Secretaria de Gestão"));
+        var secretariat = service.create(new SaveSecretariatCommand("Secretaria de Gestão"), Actor.admin());
         responsibleRepository.save(new Responsible(
                 UUID.randomUUID(),
                 "Ana Silva",
@@ -62,8 +64,22 @@ class SecretariatServiceTest {
                 secretariat.id(),
                 new AuditMetadata(NOW, NOW)));
 
-        assertThatThrownBy(() -> service.delete(secretariat.id()))
+        assertThatThrownBy(() -> service.delete(secretariat.id(), Actor.admin()))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("Secretariat is assigned to at least one responsible");
+    }
+
+    @Test
+    void onlyAdministratorManagesSecretariats() {
+        var secretariat = service.create(new SaveSecretariatCommand("Secretaria de Obras"), Actor.admin());
+        Actor responsibleActor = Actor.responsible(UUID.randomUUID());
+
+        assertThatThrownBy(() -> service.create(new SaveSecretariatCommand("Nova"), responsibleActor))
+                .isInstanceOf(ForbiddenOperationException.class);
+        assertThatThrownBy(() -> service.update(secretariat.id(), new SaveSecretariatCommand("Nova"), responsibleActor))
+                .isInstanceOf(ForbiddenOperationException.class);
+        assertThatThrownBy(() -> service.delete(secretariat.id(), responsibleActor))
+                .isInstanceOf(ForbiddenOperationException.class);
+        assertThat(service.get(secretariat.id()).name()).isEqualTo("Secretaria de Obras");
     }
 }

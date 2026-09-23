@@ -8,9 +8,11 @@ import br.com.facilit.kanban.application.project.ProjectService;
 import br.com.facilit.kanban.application.project.SaveProjectCommand;
 import br.com.facilit.kanban.domain.project.Project;
 import br.com.facilit.kanban.domain.project.ProjectStatus;
+import br.com.facilit.kanban.infrastructure.security.AuthenticatedActorResolver;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import java.security.Principal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
@@ -25,9 +27,11 @@ import org.springframework.stereotype.Controller;
 public class ProjectGraphQlController {
 
     private final ProjectService service;
+    private final AuthenticatedActorResolver actorResolver;
 
-    public ProjectGraphQlController(ProjectService service) {
+    public ProjectGraphQlController(ProjectService service, AuthenticatedActorResolver actorResolver) {
         this.service = service;
+        this.actorResolver = actorResolver;
     }
 
     @QueryMapping
@@ -72,27 +76,37 @@ public class ProjectGraphQlController {
     }
 
     @MutationMapping
-    public ProjectGraphQlResponse createProject(@Argument @Valid ProjectGraphQlInput input) {
-        return ProjectGraphQlResponse.from(service.create(input.toCommand()));
+    public ProjectGraphQlResponse createProject(
+            @Argument @Valid ProjectGraphQlInput input,
+            Principal principal) {
+        return ProjectGraphQlResponse.from(service.create(input.toCommand(), actorResolver.resolve(principal)));
     }
 
     @MutationMapping
     public ProjectGraphQlResponse updateProject(
             @Argument String id,
-            @Argument @Valid ProjectGraphQlInput input) {
-        return ProjectGraphQlResponse.from(service.update(UUID.fromString(id), input.toCommand()));
+            @Argument @Valid ProjectGraphQlInput input,
+            Principal principal) {
+        return ProjectGraphQlResponse.from(service.update(
+                UUID.fromString(id),
+                input.toCommand(),
+                actorResolver.resolve(principal)));
     }
 
     @MutationMapping
     public ProjectGraphQlResponse transitionProject(
             @Argument String id,
-            @Argument ProjectStatus status) {
-        return ProjectGraphQlResponse.from(service.transition(UUID.fromString(id), status));
+            @Argument ProjectStatus status,
+            Principal principal) {
+        return ProjectGraphQlResponse.from(service.transition(
+                UUID.fromString(id),
+                status,
+                actorResolver.resolve(principal)));
     }
 
     @MutationMapping
-    public boolean deleteProject(@Argument String id) {
-        service.delete(UUID.fromString(id));
+    public boolean deleteProject(@Argument String id, Principal principal) {
+        service.delete(UUID.fromString(id), actorResolver.resolve(principal));
         return true;
     }
 

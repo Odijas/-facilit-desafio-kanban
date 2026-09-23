@@ -25,3 +25,10 @@ Data: 2026-09-22
 ## Rev4 — 2026-09-22
 
 - `[HIPÓTESE]` graphql-js e graphql-java implementam a mesma regra de validação da especificação GraphQL (uso de variáveis em posição permitida); a mensagem reproduzida por graphql-js é equivalente à recebida do backend. Só o gate local confirma no graphql-java.
+
+## Fechamento — 2026-09-23
+
+- `[EXECUTADO PELO USUÁRIO · 2026-09-23]` gate completo com exit code 0; as lacunas de execução backend/runtime registradas nos rev2–rev4 foram fechadas.
+- `[VERIFICADO]` pendências classificadas e transferidas para o F3-L2 aprovado: autenticação do responsável; `/error` em `denyAll` (500 não tratado chegando como 403).
+- `[VERIFICADO]` aviso não bloqueante mantido: bundle Vite acima de 500 kB.
+- `[VERIFICADO]` pendência do F3-L4 (engenharia de entrega): opção de CI ainda não decidida pelo usuário.

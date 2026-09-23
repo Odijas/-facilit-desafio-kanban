@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AuthUser } from "../../api/auth";
 import {
   createProject,
   createResponsible,
@@ -89,7 +90,13 @@ const responsible: Responsible = {
   updatedAt: "2026-09-22T12:00:00Z",
 };
 
-function renderBoard() {
+const administrator: AuthUser = {
+  email: "admin@example.invalid",
+  authorities: ["ROLE_ADMIN"],
+  responsibleId: null,
+};
+
+function renderBoard(user: AuthUser = administrator) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -99,7 +106,7 @@ function renderBoard() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <KanbanBoard />
+      <KanbanBoard user={user} />
     </QueryClientProvider>,
   );
 }
@@ -312,6 +319,46 @@ describe("KanbanBoard", () => {
         secretariatId: secretariat.id,
       });
     });
+  });
+
+  it("limits a responsible to their own projects", async () => {
+    const otherProject: Project = {
+      ...project,
+      id: "30000000-0000-4000-8000-000000000002",
+      name: "Obras centrais",
+      responsibleIds: ["20000000-0000-4000-8000-000000000009"],
+    };
+    mockedListProjects.mockResolvedValue([project, otherProject]);
+    const user = userEvent.setup();
+    renderBoard({
+      email: "maria@example.com",
+      authorities: ["ROLE_RESPONSIBLE"],
+      responsibleId: responsible.id,
+    });
+
+    const ownCard = await screen.findByRole("article", {
+      name: "Projeto Portal cidadão",
+    });
+    const otherCard = screen.getByRole("article", {
+      name: "Projeto Obras centrais",
+    });
+
+    expect(ownCard).toHaveAttribute("draggable", "true");
+    expect(otherCard).toHaveAttribute("draggable", "false");
+    expect(
+      within(ownCard).getByRole("button", { name: "Editar" }),
+    ).toBeInTheDocument();
+    expect(
+      within(otherCard).queryByRole("button", { name: "Editar" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Novo responsável" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Novo projeto" }));
+    const ownerCheckbox = screen.getByRole("checkbox", { name: /Maria Silva/ });
+    expect(ownerCheckbox).toBeChecked();
+    expect(ownerCheckbox).toBeDisabled();
   });
 
   it("shows a recoverable error when Kanban data cannot be loaded", async () => {

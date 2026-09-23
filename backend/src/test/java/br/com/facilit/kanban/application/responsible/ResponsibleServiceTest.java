@@ -3,10 +3,13 @@ package br.com.facilit.kanban.application.responsible;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import br.com.facilit.kanban.application.common.Actor;
 import br.com.facilit.kanban.application.common.ConflictException;
+import br.com.facilit.kanban.application.common.ForbiddenOperationException;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
 import br.com.facilit.kanban.application.support.InMemoryProjectRepository;
+import br.com.facilit.kanban.application.support.InMemoryResponsibleCredentialRepository;
 import br.com.facilit.kanban.application.support.InMemoryResponsibleRepository;
 import br.com.facilit.kanban.application.support.InMemorySecretariatRepository;
 import br.com.facilit.kanban.domain.common.AuditMetadata;
@@ -29,6 +32,7 @@ class ResponsibleServiceTest {
     private InMemoryResponsibleRepository responsibleRepository;
     private InMemoryProjectRepository projectRepository;
     private InMemorySecretariatRepository secretariatRepository;
+    private InMemoryResponsibleCredentialRepository credentialRepository;
     private ResponsibleService service;
 
     @BeforeEach
@@ -36,16 +40,18 @@ class ResponsibleServiceTest {
         responsibleRepository = new InMemoryResponsibleRepository();
         projectRepository = new InMemoryProjectRepository();
         secretariatRepository = new InMemorySecretariatRepository();
+        credentialRepository = new InMemoryResponsibleCredentialRepository();
         service = new ResponsibleService(
                 responsibleRepository,
                 secretariatRepository,
                 projectRepository,
+                credentialRepository,
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @Test
     void createsReadsListsUpdatesAndDeletesResponsible() {
-        Responsible created = service.create(command("Ana@Example.com", null));
+        Responsible created = service.create(command("Ana@Example.com", null), Actor.admin());
 
         assertThat(created.email()).isEqualTo("ana@example.com");
         assertThat(created.audit().createdAt()).isEqualTo(NOW);
@@ -54,20 +60,21 @@ class ResponsibleServiceTest {
 
         Responsible updated = service.update(
                 created.id(),
-                new SaveResponsibleCommand("Ana Souza", "ANA@EXAMPLE.COM", "Gestora", null));
+                new SaveResponsibleCommand("Ana Souza", "ANA@EXAMPLE.COM", "Gestora", null),
+                Actor.admin());
         assertThat(updated.name()).isEqualTo("Ana Souza");
         assertThat(updated.audit().createdAt()).isEqualTo(created.audit().createdAt());
 
-        service.delete(created.id());
+        service.delete(created.id(), Actor.admin());
         assertThatThrownBy(() -> service.get(created.id()))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
     void rejectsDuplicateEmailIgnoringCase() {
-        service.create(command("ana@example.com", null));
+        service.create(command("ana@example.com", null), Actor.admin());
 
-        assertThatThrownBy(() -> service.create(command("ANA@EXAMPLE.COM", null)))
+        assertThatThrownBy(() -> service.create(command("ANA@EXAMPLE.COM", null), Actor.admin()))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("Responsible email already exists");
     }
@@ -76,14 +83,14 @@ class ResponsibleServiceTest {
     void rejectsUnknownSecretariat() {
         UUID secretariatId = UUID.randomUUID();
 
-        assertThatThrownBy(() -> service.create(command("ana@example.com", secretariatId)))
+        assertThatThrownBy(() -> service.create(command("ana@example.com", secretariatId), Actor.admin()))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Secretariat not found: " + secretariatId);
     }
 
     @Test
     void blocksDeleteWhenResponsibleIsAssignedToProject() {
-        Responsible responsible = service.create(command("ana@example.com", null));
+        Responsible responsible = service.create(command("ana@example.com", null), Actor.admin());
         Instant now = NOW;
         projectRepository.save(new Project(
                 UUID.randomUUID(),
@@ -93,9 +100,37 @@ class ResponsibleServiceTest {
                 new ProjectScheduleMetrics(ProjectStatus.NOT_STARTED, 0, 0),
                 new AuditMetadata(now, now)));
 
-        assertThatThrownBy(() -> service.delete(responsible.id()))
+        assertThatThrownBy(() -> service.delete(responsible.id(), Actor.admin()))
                 .isInstanceOf(ConflictException.class)
                 .hasMessage("Responsible is assigned to at least one project");
+    }
+
+    @Test
+    void onlyAdministratorManagesResponsibles() {
+        Responsible created = service.create(command("ana@example.com", null), Actor.admin());
+        Actor responsibleActor = Actor.responsible(created.id());
+
+        assertThatThrownBy(() -> service.create(command("bruno@example.com", null), responsibleActor))
+                .isInstanceOf(ForbiddenOperationException.class)
+                .hasMessage("Only administrators can perform this operation");
+        assertThatThrownBy(() -> service.update(created.id(), command("outro@example.com", null), responsibleActor))
+                .isInstanceOf(ForbiddenOperationException.class);
+        assertThatThrownBy(() -> service.delete(created.id(), responsibleActor))
+                .isInstanceOf(ForbiddenOperationException.class);
+        assertThat(service.get(created.id()).email()).isEqualTo("ana@example.com");
+    }
+
+    @Test
+    void blocksEmailChangeThatCollidesWithAnotherLogin() {
+        Responsible created = service.create(command("ana@example.com", null), Actor.admin());
+        credentialRepository.save(created.id(), created.email(), "senha-segura-123", NOW);
+        credentialRepository.registerOtherLogin("admin@example.com");
+
+        assertThatThrownBy(() -> service.update(created.id(), command("admin@example.com", null), Actor.admin()))
+                .isInstanceOf(ConflictException.class)
+                .hasMessage("Email is already used by another login");
+        assertThat(service.update(created.id(), command("ana.silva@example.com", null), Actor.admin()).email())
+                .isEqualTo("ana.silva@example.com");
     }
 
     private static SaveResponsibleCommand command(String email, UUID secretariatId) {
