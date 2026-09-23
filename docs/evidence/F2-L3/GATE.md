@@ -2,20 +2,23 @@
 
 Data: 2026-09-22
 
-Estado: **CANDIDATE corrigido estruturalmente / aguardando nova execução local**.
+Estado: **GREEN**.
 
-Critérios para GREEN:
+Evidência final recebida do usuário:
 
-- `pnpm format` (`biome check --write .`) antes das verificações;
-- lint, typecheck, testes e build frontend sem falhas;
-- regressão backend GREEN;
-- Docker Compose sobe com banco healthy;
-- autenticação/CSRF funcionam pela origem do frontend;
-- responsável e projeto podem ser criados pela API via proxy;
-- projeto é listado e atualizado;
-- transição legítima `NOT_STARTED → IN_PROGRESS` funciona;
-- transição inválida `IN_PROGRESS → OVERDUE` retorna 400 com mensagem de domínio;
-- exclusão e cleanup funcionam;
-- `git diff --check` limpo.
+```text
+[EXECUTADO PELO USUÁRIO · 2026-09-22] health => {"status":"UP"}
+[EXECUTADO PELO USUÁRIO · 2026-09-22] F2_L3_AUTH_GREEN
+[EXECUTADO PELO USUÁRIO · 2026-09-22] F2_L3_RESPONSIBLE_GREEN
+[EXECUTADO PELO USUÁRIO · 2026-09-22] F2_L3_PROJECT_CREATE_GREEN
+[EXECUTADO PELO USUÁRIO · 2026-09-22] F2_L3_LIST_GREEN
+[EXECUTADO PELO USUÁRIO · 2026-09-22] F2_L3_TRANSITION_GREEN
+[EXECUTADO PELO USUÁRIO · 2026-09-22] F2_L3_TRANSITION_BLOCK_GREEN
+[EXECUTADO PELO USUÁRIO · 2026-09-22] F2_L3_UPDATE_GREEN
+[EXECUTADO PELO USUÁRIO · 2026-09-22] F2_L3_CRUD_GREEN
+[EXECUTADO PELO USUÁRIO · 2026-09-22] F2_L3_STRICT_TYPES_GREEN 22
+[EXECUTADO PELO USUÁRIO · 2026-09-22] cleanup concluído
+[EXECUTADO PELO USUÁRIO · 2026-09-22] Resultado: exit code 0
+```
 
-Promoção somente após `=== F2-L3 / F2 GREEN ===` e `Resultado: exit code 0`.
+Conclusão: F2-L3 e o gate agregado da **F2 — Segurança + UI** foram promovidos para GREEN em 2026-09-22.

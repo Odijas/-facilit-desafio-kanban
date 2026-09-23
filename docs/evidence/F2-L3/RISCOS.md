@@ -8,3 +8,5 @@ Data: 2026-09-22
 - `[VERIFICADO]` o drag-and-drop é nativo do navegador; experiência touch/teclado não é equivalente ao mouse e permanece limitação do diferencial.
 - `[VERIFICADO]` React Router não está instalado. O roteamento atual foi isolado em `app/navigation.ts`; adicionar dependência sem resolver/validar lockfile foi evitado.
 - `[VERIFICADO]` frontend Docker continua usando Vite dev server; entrega estática de produção permanece para o freeze final.
+
+- `[EXECUTADO PELO USUÁRIO · 2026-09-22]` gate final completo encerrou com exit code 0; as lacunas runtime desta revisão foram fechadas e F2-L3/F2 foram promovidos para GREEN.

@@ -80,3 +80,13 @@ Data: 2026-09-22
 [EXECUTADO · 2026-09-22] tentativa de obter o binário oficial Biome 2.5.14 diretamente do GitHub falhou por `Could not resolve host: github.com`; portanto não há alegação de Biome real executado neste ambiente.
 [DESCONHECIDO] lint/typecheck/test/build reais desta revisão estrutural permanecem dependentes do gate local.
 ```
+
+## Gate final GREEN
+
+```text
+[EXECUTADO PELO USUÁRIO · 2026-09-22] health UP; autenticação/CSRF, responsável, criação/listagem/transição legítima, bloqueio de domínio, atualização e CRUD via proxy ficaram GREEN.
+[EXECUTADO PELO USUÁRIO · 2026-09-22] scan estrito TypeScript: F2_L3_STRICT_TYPES_GREEN 22.
+[EXECUTADO PELO USUÁRIO · 2026-09-22] Docker Compose: db healthy, backend e frontend up.
+[EXECUTADO PELO USUÁRIO · 2026-09-22] cleanup concluído; Resultado: exit code 0.
+[CONCLUSÃO] F2-L3/F2 promovidos para GREEN.
+```
