@@ -15,8 +15,10 @@ import {
   KanbanApiError,
   listProjects,
   listResponsibles,
+  listSecretariats,
   type Project,
   type Responsible,
+  type Secretariat,
   transitionProject,
   updateProject,
 } from "../../api/kanban";
@@ -37,6 +39,7 @@ vi.mock("../../api/kanban", () => {
     KanbanApiError: MockKanbanApiError,
     listProjects: vi.fn(),
     listResponsibles: vi.fn(),
+    listSecretariats: vi.fn(),
     createProject: vi.fn(),
     updateProject: vi.fn(),
     transitionProject: vi.fn(),
@@ -47,6 +50,7 @@ vi.mock("../../api/kanban", () => {
 
 const mockedListProjects = vi.mocked(listProjects);
 const mockedListResponsibles = vi.mocked(listResponsibles);
+const mockedListSecretariats = vi.mocked(listSecretariats);
 const mockedCreateProject = vi.mocked(createProject);
 const mockedUpdateProject = vi.mocked(updateProject);
 const mockedTransitionProject = vi.mocked(transitionProject);
@@ -64,6 +68,13 @@ const project: Project = {
   actualEnd: null,
   delayDays: 0,
   remainingTimePercentage: 100,
+  createdAt: "2026-09-22T12:00:00Z",
+  updatedAt: "2026-09-22T12:00:00Z",
+};
+
+const secretariat: Secretariat = {
+  id: "10000000-0000-4000-8000-000000000001",
+  name: "Secretaria Digital",
   createdAt: "2026-09-22T12:00:00Z",
   updatedAt: "2026-09-22T12:00:00Z",
 };
@@ -108,6 +119,7 @@ describe("KanbanBoard", () => {
   beforeEach(() => {
     mockedListProjects.mockReset();
     mockedListResponsibles.mockReset();
+    mockedListSecretariats.mockReset();
     mockedCreateProject.mockReset();
     mockedUpdateProject.mockReset();
     mockedTransitionProject.mockReset();
@@ -116,6 +128,7 @@ describe("KanbanBoard", () => {
 
     mockedListProjects.mockResolvedValue([project]);
     mockedListResponsibles.mockResolvedValue([responsible]);
+    mockedListSecretariats.mockResolvedValue([secretariat]);
     mockedCreateProject.mockResolvedValue(project);
     mockedUpdateProject.mockResolvedValue(project);
     mockedTransitionProject.mockResolvedValue({
@@ -143,6 +156,18 @@ describe("KanbanBoard", () => {
     expect(
       screen.getByRole("region", { name: "Coluna Concluído" }),
     ).toBeInTheDocument();
+  });
+
+  it("requests projects with advanced text filtering", async () => {
+    const user = userEvent.setup();
+    renderBoard();
+
+    await screen.findByText("Portal cidadão");
+    await user.type(screen.getByLabelText("Buscar projeto"), "Portal");
+
+    await waitFor(() => {
+      expect(mockedListProjects).toHaveBeenLastCalledWith({ text: "Portal" });
+    });
   });
 
   it("requests the backend transition when a project is dropped in another column", async () => {
@@ -272,6 +297,11 @@ describe("KanbanBoard", () => {
     await user.type(screen.getByLabelText(/Nome/), "João Souza");
     await user.type(screen.getByLabelText(/E-mail/), "joao@example.com");
     await user.type(screen.getByLabelText(/Cargo/), "Gestor");
+    const dialog = screen.getByRole("dialog", { name: "Novo responsável" });
+    await user.click(within(dialog).getByLabelText("Secretaria"));
+    await user.click(
+      screen.getByRole("option", { name: "Secretaria Digital" }),
+    );
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => {
@@ -279,7 +309,7 @@ describe("KanbanBoard", () => {
         name: "João Souza",
         email: "joao@example.com",
         position: "Gestor",
-        secretariatId: null,
+        secretariatId: secretariat.id,
       });
     });
   });
@@ -287,6 +317,7 @@ describe("KanbanBoard", () => {
   it("shows a recoverable error when Kanban data cannot be loaded", async () => {
     mockedListProjects.mockRejectedValue(new Error("offline"));
     mockedListResponsibles.mockResolvedValue([responsible]);
+    mockedListSecretariats.mockResolvedValue([secretariat]);
 
     renderBoard();
 
