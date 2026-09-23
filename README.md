@@ -30,7 +30,9 @@ Projeto para o desafio técnico de Backend Sênior: API Java para gestão de pro
 
 **F3-L1 — Funcionalidades diferenciais: GREEN em 2026-09-23.**
 
-**F3-L2 — Autenticação do responsável + erro seguro: CANDIDATE em 2026-09-23, aguardando gate local.**
+**F3-L2 — Autenticação do responsável + erro seguro: GREEN em 2026-09-23.**
+
+**F3-L3 — Observabilidade: CANDIDATE em 2026-09-23, aguardando gate local.**
 
 A fundação contém:
 
@@ -78,6 +80,19 @@ Serviços locais:
 - sessão atual: `GET http://localhost:8080/api/v1/auth/me`
 - logout: `POST http://localhost:8080/api/v1/auth/logout`
 - PostgreSQL: acessível apenas pela rede interna do Compose como `db:5432`
+- health do Actuator: `http://localhost:8080/actuator/health` (público, sem detalhes; também `/liveness` e `/readiness`)
+- métricas Prometheus: `http://localhost:8080/actuator/prometheus` (HTTP Basic com a credencial técnica de métricas)
+
+### Observabilidade (opcional)
+
+Preencha `METRICS_PASSWORD` e `GRAFANA_ADMIN_PASSWORD` no `.env` (mínimo de 16 caracteres para `METRICS_PASSWORD`; gere com `python3 -c 'import secrets; print(secrets.token_urlsafe(32))'`) e suba com a sobreposição:
+
+```bash
+docker compose -f compose.yaml -f compose.observability.yaml up --build -d
+```
+
+- Prometheus: `http://127.0.0.1:9090` (coleta `backend:8080/actuator/prometheus` a cada 15 s);
+- Grafana: `http://127.0.0.1:3000`, usuário `admin` e a senha de `GRAFANA_ADMIN_PASSWORD`; painel provisionado **Facilit Kanban — Backend**. A senha do Grafana vale na criação do contêiner; para trocá-la, recrie o serviço (`docker compose -f compose.yaml -f compose.observability.yaml up -d --force-recreate grafana`).
 
 ## Verificações
 
@@ -155,3 +170,13 @@ O F3-L2 adiciona o perfil `RESPONSIBLE` ao lado do `ADMIN`, conforme o `docs/gov
 - a regra de posse fica na camada de aplicação (`Actor` informado aos casos de uso), reutilizada por REST e GraphQL;
 - o e-mail de login do responsável é copiado para `app_users` e sincronizado na mesma transação quando o ADMIN altera o e-mail do responsável; o índice único de login impede colisão com o e-mail do ADMIN (409);
 - erros inesperados passam a responder 500 com `code = INTERNAL_ERROR` e `incidentId`, sem detalhes internos; rotas inexistentes respondem 404 em vez de 403.
+
+## F3-L3 — Observabilidade
+
+O F3-L3 adiciona observabilidade ao backend sem alterar regras de negócio:
+
+- Spring Boot Actuator expõe somente `health` e `prometheus`; os demais endpoints ficam indisponíveis. `health` é público e responde só `UP`/`DOWN`, sem componentes nem detalhes;
+- `/actuator/prometheus` usa uma cadeia de segurança própria, stateless, com HTTP Basic e a credencial técnica `ROLE_METRICS` (`APP_METRICS_USERNAME`, padrão `prometheus`, e `APP_METRICS_PASSWORD`). Sessão, ADMIN e responsável não leem métricas. Sem senha configurada, o endpoint fica fechado; senha abaixo de 16 caracteres ou acima de 72 bytes impede a subida;
+- métricas com a tag `application="facilit-kanban"` e histograma de `http.server.requests` (latência p95), JVM e pool HikariCP;
+- logs estruturados em JSON no formato ECS (`@timestamp`, `log.level`, `message`, `ecs.version`) no Docker Compose; a execução local via Maven mantém o log legível;
+- `compose.observability.yaml` adiciona Prometheus v3.14.0 e Grafana 13.1.3, ligados só em `127.0.0.1`, com datasource e painel provisionados em `observability/`. A senha de métricas chega ao Prometheus como secret do Compose; nenhuma senha tem valor padrão.

@@ -10,3 +10,8 @@ Data: 2026-09-23
 - `[VERIFICADO]` se já existir um responsável com o e-mail de demonstração sem credencial, a subida falha com conflito explícito (fail-fast), no mesmo espírito do bootstrap do ADMIN.
 - `[VERIFICADO]` não há tela de gestão de credenciais no frontend; o ADMIN usa REST/Swagger ou GraphQL. Fora do escopo aprovado.
 - `[VERIFICADO]` aviso não bloqueante mantido: bundle Vite acima de 500 kB.
+
+## Fechamento — 2026-09-23
+
+- `[EXECUTADO PELO USUÁRIO · 2026-09-23]` gate completo com exit code 0: compilação Spring, unitários, ITs com Testcontainers e runtime Docker confirmados; os `[DESCONHECIDO]` e `[HIPÓTESE]` acima (propagação do `Principal` no GraphQL, precedência do tratador genérico, PATCH no `TestRestTemplate`) foram exercitados pela suíte e pelo gate sem falha.
+- `[VERIFICADO]` mantidos como estão, fora do escopo aprovado: ausência de tela de credenciais no frontend; aviso não bloqueante de bundle Vite acima de 500 kB.

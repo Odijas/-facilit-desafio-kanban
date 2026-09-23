@@ -22,8 +22,8 @@ Data: 2026-09-23 · Estado: **APROVADO** — todas as decisões registradas (P1,
 | Lote | Conteúdo | Estado |
 |---|---|---|
 | F3-L1 | Funcionalidades diferenciais: indicadores, CRUD de Secretaria, filtros avançados | **GREEN** em 2026-09-23 (gate rev4, exit code 0) |
-| **F3-L2** | **Autenticação do responsável + erro seguro** | próximo lote |
-| F3-L3 | Observabilidade (antigo F3-L2) | não iniciado |
+| **F3-L2** | **Autenticação do responsável + erro seguro** | **GREEN** em 2026-09-23 (gate local, exit code 0) |
+| F3-L3 | Observabilidade (antigo F3-L2) | CANDIDATE em 2026-09-23, aguardando gate local |
 | F3-L4 | Engenharia de entrega (antigo F3-L3), com migração para o GitHub | não iniciado |
 
 A promoção documental do F3-L1 (GATE, MATRIZ, EXECUCAO, RISCOS, README) entra no pacote do F3-L2, como ocorreu com o F2-L3 dentro do pacote do F3-L1.
