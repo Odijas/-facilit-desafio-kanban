@@ -91,6 +91,7 @@ describe("App", () => {
     mockedLogin.mockResolvedValue({
       email: "admin@example.invalid",
       authorities: ["ROLE_ADMIN"],
+      responsibleId: null,
     });
     const user = userEvent.setup();
 
@@ -139,6 +140,7 @@ describe("App", () => {
     mockedGetCurrentUser.mockResolvedValue({
       email: "admin@example.invalid",
       authorities: ["ROLE_ADMIN"],
+      responsibleId: null,
     });
 
     renderApp();
@@ -150,6 +152,7 @@ describe("App", () => {
     mockedGetCurrentUser.mockResolvedValue({
       email: "admin@example.invalid",
       authorities: ["ROLE_ADMIN"],
+      responsibleId: null,
     });
     mockedGetHealthStatus.mockRejectedValue(new Error("offline"));
 
@@ -162,6 +165,7 @@ describe("App", () => {
     mockedGetCurrentUser.mockResolvedValue({
       email: "admin@example.invalid",
       authorities: ["ROLE_ADMIN"],
+      responsibleId: null,
     });
     mockedLogout.mockResolvedValue();
     const user = userEvent.setup();
@@ -172,6 +176,21 @@ describe("App", () => {
 
     expect(await screen.findByLabelText(/E-mail/)).toBeInTheDocument();
     expect(window.location.pathname).toBe("/login");
+  });
+
+  it("shows the responsible dashboard for a responsible user", async () => {
+    mockedGetCurrentUser.mockResolvedValue({
+      email: "responsavel@example.invalid",
+      authorities: ["ROLE_RESPONSIBLE"],
+      responsibleId: "20000000-0000-4000-8000-000000000001",
+    });
+
+    renderApp();
+
+    expect(
+      await screen.findByText("Painel do responsável"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Painel administrativo")).not.toBeInTheDocument();
   });
 
   it("shows an error when the protected session cannot be validated", async () => {

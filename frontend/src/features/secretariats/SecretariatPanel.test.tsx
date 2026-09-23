@@ -38,7 +38,7 @@ const secretariat: Secretariat = {
   updatedAt: "2026-09-22T12:00:00Z",
 };
 
-function renderPanel() {
+function renderPanel(canManage = true) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -48,7 +48,7 @@ function renderPanel() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <SecretariatPanel />
+      <SecretariatPanel canManage={canManage} />
     </QueryClientProvider>,
   );
 }
@@ -64,6 +64,21 @@ describe("SecretariatPanel", () => {
     mockedCreateSecretariat.mockResolvedValue(secretariat);
     mockedUpdateSecretariat.mockResolvedValue(secretariat);
     mockedDeleteSecretariat.mockResolvedValue();
+  });
+
+  it("hides secretariat management actions from non-administrators", async () => {
+    renderPanel(false);
+
+    expect(await screen.findByText("Secretaria Digital")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Nova secretaria" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Editar" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Excluir" }),
+    ).not.toBeInTheDocument();
   });
 
   it("creates, updates and deletes a secretariat through explicit actions", async () => {

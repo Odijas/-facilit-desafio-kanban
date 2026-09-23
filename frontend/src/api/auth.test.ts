@@ -39,6 +39,7 @@ describe("auth API", () => {
         jsonResponse({
           email: "admin@example.invalid",
           authorities: ["ROLE_ADMIN"],
+          responsibleId: null,
         }),
       );
 
