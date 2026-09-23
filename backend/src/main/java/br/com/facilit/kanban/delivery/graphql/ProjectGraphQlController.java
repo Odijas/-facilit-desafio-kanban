@@ -2,13 +2,17 @@ package br.com.facilit.kanban.delivery.graphql;
 
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
+import br.com.facilit.kanban.application.project.ProjectFilter;
+import br.com.facilit.kanban.application.project.ProjectIndicators;
 import br.com.facilit.kanban.application.project.ProjectService;
 import br.com.facilit.kanban.application.project.SaveProjectCommand;
 import br.com.facilit.kanban.domain.project.Project;
 import br.com.facilit.kanban.domain.project.ProjectStatus;
+import br.com.facilit.kanban.infrastructure.security.AuthenticatedActorResolver;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import java.security.Principal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
@@ -23,9 +27,11 @@ import org.springframework.stereotype.Controller;
 public class ProjectGraphQlController {
 
     private final ProjectService service;
+    private final AuthenticatedActorResolver actorResolver;
 
-    public ProjectGraphQlController(ProjectService service) {
+    public ProjectGraphQlController(ProjectService service, AuthenticatedActorResolver actorResolver) {
         this.service = service;
+        this.actorResolver = actorResolver;
     }
 
     @QueryMapping
@@ -37,11 +43,21 @@ public class ProjectGraphQlController {
     public ProjectGraphQlPage projects(
             @Argument int page,
             @Argument int size,
-            @Argument ProjectStatus status) {
+            @Argument ProjectStatus status,
+            @Argument String secretariatId,
+            @Argument String responsibleId,
+            @Argument String plannedFrom,
+            @Argument String plannedTo,
+            @Argument String text) {
         PageQuery pageQuery = new PageQuery(page, size);
-        PageResult<Project> result = status == null
-                ? service.list(pageQuery)
-                : service.listByStatus(status, pageQuery);
+        ProjectFilter filter = new ProjectFilter(
+                status,
+                parseUuid(secretariatId),
+                parseUuid(responsibleId),
+                parseDate(plannedFrom),
+                parseDate(plannedTo),
+                text);
+        PageResult<Project> result = service.search(filter, pageQuery);
         List<ProjectGraphQlResponse> content = result.content().stream()
                 .map(ProjectGraphQlResponse::from)
                 .toList();
@@ -54,29 +70,52 @@ public class ProjectGraphQlController {
                 result.hasPrevious());
     }
 
+    @QueryMapping
+    public ProjectIndicatorsGraphQlResponse projectIndicators() {
+        return ProjectIndicatorsGraphQlResponse.from(service.indicators());
+    }
+
     @MutationMapping
-    public ProjectGraphQlResponse createProject(@Argument @Valid ProjectGraphQlInput input) {
-        return ProjectGraphQlResponse.from(service.create(input.toCommand()));
+    public ProjectGraphQlResponse createProject(
+            @Argument @Valid ProjectGraphQlInput input,
+            Principal principal) {
+        return ProjectGraphQlResponse.from(service.create(input.toCommand(), actorResolver.resolve(principal)));
     }
 
     @MutationMapping
     public ProjectGraphQlResponse updateProject(
             @Argument String id,
-            @Argument @Valid ProjectGraphQlInput input) {
-        return ProjectGraphQlResponse.from(service.update(UUID.fromString(id), input.toCommand()));
+            @Argument @Valid ProjectGraphQlInput input,
+            Principal principal) {
+        return ProjectGraphQlResponse.from(service.update(
+                UUID.fromString(id),
+                input.toCommand(),
+                actorResolver.resolve(principal)));
     }
 
     @MutationMapping
     public ProjectGraphQlResponse transitionProject(
             @Argument String id,
-            @Argument ProjectStatus status) {
-        return ProjectGraphQlResponse.from(service.transition(UUID.fromString(id), status));
+            @Argument ProjectStatus status,
+            Principal principal) {
+        return ProjectGraphQlResponse.from(service.transition(
+                UUID.fromString(id),
+                status,
+                actorResolver.resolve(principal)));
     }
 
     @MutationMapping
-    public boolean deleteProject(@Argument String id) {
-        service.delete(UUID.fromString(id));
+    public boolean deleteProject(@Argument String id, Principal principal) {
+        service.delete(UUID.fromString(id), actorResolver.resolve(principal));
         return true;
+    }
+
+    private static UUID parseUuid(String value) {
+        return value == null ? null : UUID.fromString(value);
+    }
+
+    private static LocalDate parseDate(String value) {
+        return value == null ? null : LocalDate.parse(value);
     }
 
     public record ProjectGraphQlInput(
@@ -152,4 +191,29 @@ public class ProjectGraphQlController {
             boolean hasNext,
             boolean hasPrevious) {
     }
+
+    public record ProjectIndicatorsGraphQlResponse(
+            long totalProjects,
+            long delayedProjects,
+            List<ProjectStatusIndicatorGraphQlResponse> byStatus) {
+
+        static ProjectIndicatorsGraphQlResponse from(ProjectIndicators indicators) {
+            return new ProjectIndicatorsGraphQlResponse(
+                    indicators.totalProjects(),
+                    indicators.delayedProjects(),
+                    indicators.byStatus().stream()
+                            .map(item -> new ProjectStatusIndicatorGraphQlResponse(
+                                    item.status().name(),
+                                    item.projectCount(),
+                                    item.averageDelayDays()))
+                            .toList());
+        }
+    }
+
+    public record ProjectStatusIndicatorGraphQlResponse(
+            String status,
+            long projectCount,
+            double averageDelayDays) {
+    }
+
 }

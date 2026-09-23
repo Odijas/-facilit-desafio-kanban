@@ -1,46 +1,18 @@
-import {
-  Alert,
-  Card,
-  CardContent,
-  Chip,
-  Container,
-  Stack,
-  Typography,
-} from "@mui/material";
-import { useQuery } from "@tanstack/react-query";
-import { getHealthStatus } from "./api/health";
+import { usePathname } from "./app/navigation";
+import { LoginPage } from "./features/auth/LoginPage";
+import { ProtectedHome } from "./features/auth/ProtectedHome";
+import { NotFoundPage } from "./pages/NotFoundPage";
 
 export function App() {
-  const healthQuery = useQuery({
-    queryKey: ["health"],
-    queryFn: getHealthStatus,
-    retry: false,
-  });
+  const pathname = usePathname();
 
-  return (
-    <Container maxWidth="sm" sx={{ py: 8 }}>
-      <Card variant="outlined">
-        <CardContent>
-          <Stack spacing={2}>
-            <Typography component="h1" variant="h4">
-              Facilit Kanban
-            </Typography>
-            <Typography color="text.secondary">
-              Fundação do desafio técnico
-            </Typography>
-            {healthQuery.isPending && <Chip label="Verificando backend" />}
-            {healthQuery.isError && (
-              <Alert severity="error">Backend indisponível</Alert>
-            )}
-            {healthQuery.isSuccess && (
-              <Chip
-                color="success"
-                label={`Backend ${healthQuery.data.status}`}
-              />
-            )}
-          </Stack>
-        </CardContent>
-      </Card>
-    </Container>
-  );
+  if (pathname === "/login") {
+    return <LoginPage />;
+  }
+
+  if (pathname === "/") {
+    return <ProtectedHome />;
+  }
+
+  return <NotFoundPage />;
 }

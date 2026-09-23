@@ -65,4 +65,10 @@ public final class InMemoryResponsibleRepository implements ResponsibleRepositor
     public boolean allExist(Set<UUID> ids) {
         return !ids.isEmpty() && ids.stream().allMatch(values::containsKey);
     }
+
+    @Override
+    public boolean existsBySecretariatId(UUID secretariatId) {
+        return values.values().stream()
+                .anyMatch(value -> secretariatId.equals(value.secretariatId()));
+    }
 }

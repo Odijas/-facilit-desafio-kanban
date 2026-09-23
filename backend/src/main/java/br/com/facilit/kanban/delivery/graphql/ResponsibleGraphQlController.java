@@ -2,12 +2,15 @@ package br.com.facilit.kanban.delivery.graphql;
 
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
+import br.com.facilit.kanban.application.responsible.ResponsibleCredentialService;
 import br.com.facilit.kanban.application.responsible.ResponsibleService;
 import br.com.facilit.kanban.application.responsible.SaveResponsibleCommand;
 import br.com.facilit.kanban.domain.responsible.Responsible;
+import br.com.facilit.kanban.infrastructure.security.AuthenticatedActorResolver;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.graphql.data.method.annotation.Argument;
@@ -19,9 +22,16 @@ import org.springframework.stereotype.Controller;
 public class ResponsibleGraphQlController {
 
     private final ResponsibleService service;
+    private final ResponsibleCredentialService credentialService;
+    private final AuthenticatedActorResolver actorResolver;
 
-    public ResponsibleGraphQlController(ResponsibleService service) {
+    public ResponsibleGraphQlController(
+            ResponsibleService service,
+            ResponsibleCredentialService credentialService,
+            AuthenticatedActorResolver actorResolver) {
         this.service = service;
+        this.credentialService = credentialService;
+        this.actorResolver = actorResolver;
     }
 
     @QueryMapping
@@ -45,20 +55,41 @@ public class ResponsibleGraphQlController {
     }
 
     @MutationMapping
-    public ResponsibleGraphQlResponse createResponsible(@Argument @Valid ResponsibleGraphQlInput input) {
-        return ResponsibleGraphQlResponse.from(service.create(input.toCommand()));
+    public ResponsibleGraphQlResponse createResponsible(
+            @Argument @Valid ResponsibleGraphQlInput input,
+            Principal principal) {
+        return ResponsibleGraphQlResponse.from(service.create(input.toCommand(), actorResolver.resolve(principal)));
     }
 
     @MutationMapping
     public ResponsibleGraphQlResponse updateResponsible(
             @Argument String id,
-            @Argument @Valid ResponsibleGraphQlInput input) {
-        return ResponsibleGraphQlResponse.from(service.update(UUID.fromString(id), input.toCommand()));
+            @Argument @Valid ResponsibleGraphQlInput input,
+            Principal principal) {
+        return ResponsibleGraphQlResponse.from(service.update(
+                UUID.fromString(id),
+                input.toCommand(),
+                actorResolver.resolve(principal)));
     }
 
     @MutationMapping
-    public boolean deleteResponsible(@Argument String id) {
-        service.delete(UUID.fromString(id));
+    public boolean deleteResponsible(@Argument String id, Principal principal) {
+        service.delete(UUID.fromString(id), actorResolver.resolve(principal));
+        return true;
+    }
+
+    @MutationMapping
+    public boolean setResponsibleCredentials(
+            @Argument String responsibleId,
+            @Argument String password,
+            Principal principal) {
+        credentialService.setPassword(UUID.fromString(responsibleId), password, actorResolver.resolve(principal));
+        return true;
+    }
+
+    @MutationMapping
+    public boolean revokeResponsibleCredentials(@Argument String responsibleId, Principal principal) {
+        credentialService.revoke(UUID.fromString(responsibleId), actorResolver.resolve(principal));
         return true;
     }
 

@@ -1,0 +1,51 @@
+# Sobreposição de observabilidade. Uso:
+#   docker compose -f compose.yaml -f compose.observability.yaml up --build -d
+# Prometheus e Grafana ficam presos a 127.0.0.1. As senhas vêm do ambiente/.env,
+# são obrigatórias e não têm valor padrão. A senha de métricas chega ao Prometheus
+# como secret (arquivo em /run/secrets), porque o prometheus.yml não expande variáveis.
+
+services:
+  backend:
+    environment:
+      APP_METRICS_PASSWORD: ${METRICS_PASSWORD:?METRICS_PASSWORD is required}
+
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=2d
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    secrets:
+      - metrics_password
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana:13.1.3
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/etc/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+
+secrets:
+  metrics_password:
+    environment: METRICS_PASSWORD
+
+volumes:
+  prometheus-data:

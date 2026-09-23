@@ -175,6 +175,117 @@ class KanbanApiIT {
     }
 
     @Test
+    void exposesDifferentialSecretariatFiltersAndIndicatorsOverRestAndGraphql() {
+        JsonNode secretariat = requireBody(post(
+                "/api/v1/secretariats",
+                Map.of("name", "Secretaria de Tecnologia")),
+                HttpStatus.CREATED);
+        String secretariatId = secretariat.path("id").asText();
+
+        String email = "f3l1-" + UUID.randomUUID() + "@example.com";
+        JsonNode responsible = requireBody(post(
+                "/api/v1/responsibles",
+                Map.of(
+                        "name", "Responsável F3",
+                        "email", email,
+                        "position", "Gestor",
+                        "secretariatId", secretariatId)),
+                HttpStatus.CREATED);
+        String responsibleId = responsible.path("id").asText();
+
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        JsonNode matchingProject = requireBody(post(
+                "/api/v1/projects",
+                Map.of(
+                        "name", "Portal de serviços digitais",
+                        "responsibleIds", List.of(responsibleId),
+                        "plannedStart", today.toString(),
+                        "plannedEnd", today.plusDays(10).toString())),
+                HttpStatus.CREATED);
+        String matchingProjectId = matchingProject.path("id").asText();
+
+        JsonNode otherProject = requireBody(post(
+                "/api/v1/projects",
+                Map.of(
+                        "name", "Projeto administrativo",
+                        "responsibleIds", List.of(responsibleId),
+                        "plannedStart", today.plusDays(30).toString(),
+                        "plannedEnd", today.plusDays(40).toString())),
+                HttpStatus.CREATED);
+        String otherProjectId = otherProject.path("id").asText();
+
+        ResponseEntity<JsonNode> filtered = authenticatedGet(
+                "/api/v1/projects?page=0&size=20"
+                        + "&secretariatId=" + secretariatId
+                        + "&responsibleId=" + responsibleId
+                        + "&plannedFrom=" + today.minusDays(1)
+                        + "&plannedTo=" + today.plusDays(20)
+                        + "&text=serviços",
+                JsonNode.class);
+        JsonNode filteredBody = requireBody(filtered, HttpStatus.OK);
+        assertThat(filteredBody.path("content").size()).isEqualTo(1);
+        assertThat(filteredBody.at("/content/0/id").asText()).isEqualTo(matchingProjectId);
+
+        JsonNode graphqlFiltered = graphql(
+                """
+                query($secretariatId: ID, $responsibleId: ID, $plannedFrom: String, $plannedTo: String, $text: String) {
+                  projects(
+                    page: 0
+                    size: 20
+                    secretariatId: $secretariatId
+                    responsibleId: $responsibleId
+                    plannedFrom: $plannedFrom
+                    plannedTo: $plannedTo
+                    text: $text
+                  ) {
+                    content { id name }
+                  }
+                }
+                """,
+                Map.of(
+                        "secretariatId", secretariatId,
+                        "responsibleId", responsibleId,
+                        "plannedFrom", today.minusDays(1).toString(),
+                        "plannedTo", today.plusDays(20).toString(),
+                        "text", "serviços"));
+        assertThat(graphqlFiltered.path("errors").isMissingNode()).isTrue();
+        assertThat(graphqlFiltered.at("/data/projects/content/0/id").asText()).isEqualTo(matchingProjectId);
+
+        JsonNode indicators = requireBody(authenticatedGet(
+                "/api/v1/indicators/projects", JsonNode.class), HttpStatus.OK);
+        assertThat(indicators.path("totalProjects").asLong()).isGreaterThanOrEqualTo(2);
+        assertThat(indicators.path("byStatus").toString()).contains("NOT_STARTED");
+
+        JsonNode graphqlIndicators = graphql(
+                "query { projectIndicators { totalProjects delayedProjects byStatus { status projectCount averageDelayDays } } }",
+                Map.of());
+        assertThat(graphqlIndicators.at("/data/projectIndicators/totalProjects").asLong())
+                .isGreaterThanOrEqualTo(2);
+
+        JsonNode updatedSecretariat = requireBody(put(
+                "/api/v1/secretariats/" + secretariatId,
+                Map.of("name", "Secretaria Digital")),
+                HttpStatus.OK);
+        assertThat(updatedSecretariat.path("name").asText()).isEqualTo("Secretaria Digital");
+
+        JsonNode graphqlSecretariat = graphql(
+                "query($id: ID!) { secretariat(id: $id) { id name } }",
+                Map.of("id", secretariatId));
+        assertThat(graphqlSecretariat.at("/data/secretariat/name").asText()).isEqualTo("Secretaria Digital");
+
+        ResponseEntity<JsonNode> blockedDelete = deleteWithBody(
+                "/api/v1/secretariats/" + secretariatId);
+        assertThat(blockedDelete.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(blockedDelete.getBody()).isNotNull();
+        assertThat(blockedDelete.getBody().path("code").asText()).isEqualTo("CONFLICT");
+
+        delete("/api/v1/projects/" + matchingProjectId, HttpStatus.NO_CONTENT);
+        delete("/api/v1/projects/" + otherProjectId, HttpStatus.NO_CONTENT);
+        delete("/api/v1/responsibles/" + responsibleId, HttpStatus.NO_CONTENT);
+        delete("/api/v1/secretariats/" + secretariatId, HttpStatus.NO_CONTENT);
+    }
+
+    @Test
     void publishesOpenApiWithSchemasAndExamples() {
         ResponseEntity<JsonNode> docs = restTemplate.getForEntity(url("/api-docs"), JsonNode.class);
         assertThat(docs.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -182,6 +293,8 @@ class KanbanApiIT {
         assertThat(docs.getBody().path("openapi").asText()).startsWith("3.");
         assertThat(docs.getBody().at("/paths/~1api~1v1~1projects").isObject()).isTrue();
         assertThat(docs.getBody().at("/paths/~1api~1v1~1responsibles").isObject()).isTrue();
+        assertThat(docs.getBody().at("/paths/~1api~1v1~1secretariats").isObject()).isTrue();
+        assertThat(docs.getBody().at("/paths/~1api~1v1~1indicators~1projects").isObject()).isTrue();
         assertThat(docs.getBody().at("/components/schemas/ProjectRequest/properties/name/example").asText())
                 .isEqualTo("Implantação do portal");
         assertThat(docs.getBody().at("/components/schemas/ResponsibleRequest/properties/email/example").asText())
@@ -211,6 +324,18 @@ class KanbanApiIT {
                 JsonNode.class);
     }
 
+    private ResponseEntity<JsonNode> put(String path, Object body) {
+        AuthenticatedSession session = authenticatedSession();
+        HttpHeaders headers = jsonHeaders();
+        headers.set(HttpHeaders.COOKIE, session.cookieHeader());
+        headers.set("X-XSRF-TOKEN", session.csrfToken());
+        return restTemplate.exchange(
+                url(path),
+                HttpMethod.PUT,
+                new HttpEntity<>(body, headers),
+                JsonNode.class);
+    }
+
     private <T> ResponseEntity<T> authenticatedGet(String path, Class<T> responseType) {
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.COOKIE, authenticatedSession().cookieHeader());
@@ -219,6 +344,18 @@ class KanbanApiIT {
                 HttpMethod.GET,
                 new HttpEntity<>(headers),
                 responseType);
+    }
+
+    private ResponseEntity<JsonNode> deleteWithBody(String path) {
+        AuthenticatedSession session = authenticatedSession();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.COOKIE, session.cookieHeader());
+        headers.set("X-XSRF-TOKEN", session.csrfToken());
+        return restTemplate.exchange(
+                url(path),
+                HttpMethod.DELETE,
+                new HttpEntity<>(headers),
+                JsonNode.class);
     }
 
     private void delete(String path, HttpStatus expectedStatus) {

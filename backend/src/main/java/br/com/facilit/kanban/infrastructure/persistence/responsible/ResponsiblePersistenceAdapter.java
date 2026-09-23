@@ -5,6 +5,7 @@ import br.com.facilit.kanban.application.common.PageResult;
 import br.com.facilit.kanban.application.responsible.ResponsibleRepository;
 import br.com.facilit.kanban.domain.common.AuditMetadata;
 import br.com.facilit.kanban.domain.responsible.Responsible;
+import br.com.facilit.kanban.infrastructure.security.SecurityUserJpaRepository;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -17,9 +18,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class ResponsiblePersistenceAdapter implements ResponsibleRepository {
 
     private final ResponsibleJpaRepository repository;
+    private final SecurityUserJpaRepository securityUserRepository;
 
-    public ResponsiblePersistenceAdapter(ResponsibleJpaRepository repository) {
+    public ResponsiblePersistenceAdapter(
+            ResponsibleJpaRepository repository,
+            SecurityUserJpaRepository securityUserRepository) {
         this.repository = repository;
+        this.securityUserRepository = securityUserRepository;
     }
 
     @Override
@@ -57,7 +62,10 @@ public class ResponsiblePersistenceAdapter implements ResponsibleRepository {
                 responsible.secretariatId(),
                 responsible.audit().createdAt(),
                 responsible.audit().updatedAt());
-        return toDomain(repository.save(entity));
+        Responsible saved = toDomain(repository.save(entity));
+        securityUserRepository.findByResponsibleId(saved.id())
+                .ifPresent(user -> user.changeEmail(saved.email(), saved.audit().updatedAt()));
+        return saved;
     }
 
     @Override
@@ -82,6 +90,12 @@ public class ResponsiblePersistenceAdapter implements ResponsibleRepository {
     @Transactional(readOnly = true)
     public boolean allExist(Set<UUID> ids) {
         return !ids.isEmpty() && repository.countByIdIn(ids) == ids.size();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsBySecretariatId(UUID secretariatId) {
+        return repository.existsBySecretariatId(secretariatId);
     }
 
     private static Responsible toDomain(ResponsibleJpaEntity entity) {

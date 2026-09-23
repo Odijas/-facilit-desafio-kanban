@@ -1,5 +1,7 @@
 package br.com.facilit.kanban.delivery.auth;
 
+import br.com.facilit.kanban.application.common.Actor;
+import br.com.facilit.kanban.infrastructure.security.AuthenticatedActorResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -29,14 +31,17 @@ public class AuthRestController {
     private final AuthenticationManager authenticationManager;
     private final SecurityContextRepository securityContextRepository;
     private final CsrfTokenRepository csrfTokenRepository;
+    private final AuthenticatedActorResolver actorResolver;
 
     public AuthRestController(
             AuthenticationManager authenticationManager,
             SecurityContextRepository securityContextRepository,
-            CsrfTokenRepository csrfTokenRepository) {
+            CsrfTokenRepository csrfTokenRepository,
+            AuthenticatedActorResolver actorResolver) {
         this.authenticationManager = authenticationManager;
         this.securityContextRepository = securityContextRepository;
         this.csrfTokenRepository = csrfTokenRepository;
+        this.actorResolver = actorResolver;
     }
 
     @GetMapping("/csrf")
@@ -64,12 +69,12 @@ public class AuthRestController {
         securityContextRepository.saveContext(context, request, response);
         csrfTokenRepository.saveToken(null, request, response);
 
-        return AuthResponse.from(authentication);
+        return AuthResponse.from(authentication, actorResolver.resolve(authentication));
     }
 
     @GetMapping("/me")
     public AuthResponse me(Authentication authentication) {
-        return AuthResponse.from(authentication);
+        return AuthResponse.from(authentication, actorResolver.resolve(authentication));
     }
 
     public record LoginRequest(
@@ -80,14 +85,15 @@ public class AuthRestController {
     public record CsrfResponse(String headerName, String cookieName) {
     }
 
-    public record AuthResponse(String email, List<String> authorities) {
+    public record AuthResponse(String email, List<String> authorities, String responsibleId) {
 
-        static AuthResponse from(Authentication authentication) {
+        static AuthResponse from(Authentication authentication, Actor actor) {
             List<String> authorities = authentication.getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority)
                     .sorted()
                     .toList();
-            return new AuthResponse(authentication.getName(), authorities);
+            String responsibleId = actor.responsibleId() == null ? null : actor.responsibleId().toString();
+            return new AuthResponse(authentication.getName(), authorities, responsibleId);
         }
     }
 }

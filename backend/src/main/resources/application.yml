@@ -30,14 +30,40 @@ server:
     include-message: never
     include-stacktrace: never
 
-
 springdoc:
   api-docs:
     path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+      discovery:
+        enabled: false
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        "[http.server.requests]": true
+
 app:
+  metrics:
+    username: ${APP_METRICS_USERNAME:prometheus}
+    password: ${APP_METRICS_PASSWORD:}
   security:
     bootstrap-admin-email: ${APP_ADMIN_EMAIL:}
     bootstrap-admin-password: ${APP_ADMIN_PASSWORD:}
+    bootstrap-responsible-name: ${APP_DEMO_RESPONSIBLE_NAME:}
+    bootstrap-responsible-email: ${APP_DEMO_RESPONSIBLE_EMAIL:}
+    bootstrap-responsible-position: ${APP_DEMO_RESPONSIBLE_POSITION:}
+    bootstrap-responsible-password: ${APP_DEMO_RESPONSIBLE_PASSWORD:}

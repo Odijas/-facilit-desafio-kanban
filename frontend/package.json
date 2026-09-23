@@ -1,7 +1,7 @@
 {
   "name": "facilit-kanban-frontend",
   "private": true,
-  "version": "0.0.1",
+  "version": "1.0.0",
   "type": "module",
   "packageManager": "pnpm@12.5.1",
   "engines": {
@@ -11,8 +11,9 @@
     "dev": "vite",
     "build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && vite build",
     "lint": "biome check .",
-    "format": "biome format --write .",
+    "format": "biome check --write .",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
+    "check:strict": "node scripts/check-strict-types.mjs",
     "test": "vitest run"
   },
   "dependencies": {

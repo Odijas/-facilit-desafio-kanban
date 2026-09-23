@@ -22,4 +22,6 @@ public interface ResponsibleRepository {
     boolean existsByEmailExcludingId(String email, UUID id);
 
     boolean allExist(Set<UUID> ids);
+
+    boolean existsBySecretariatId(UUID secretariatId);
 }

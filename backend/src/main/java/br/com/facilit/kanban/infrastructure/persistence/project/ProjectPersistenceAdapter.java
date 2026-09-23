@@ -3,7 +3,10 @@ package br.com.facilit.kanban.infrastructure.persistence.project;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
+import br.com.facilit.kanban.application.project.ProjectFilter;
+import br.com.facilit.kanban.application.project.ProjectIndicators;
 import br.com.facilit.kanban.application.project.ProjectRepository;
+import br.com.facilit.kanban.application.project.ProjectStatusIndicator;
 import br.com.facilit.kanban.domain.common.AuditMetadata;
 import br.com.facilit.kanban.domain.project.Project;
 import br.com.facilit.kanban.domain.project.ProjectDates;
@@ -11,6 +14,11 @@ import br.com.facilit.kanban.domain.project.ProjectScheduleMetrics;
 import br.com.facilit.kanban.domain.project.ProjectStatus;
 import br.com.facilit.kanban.infrastructure.persistence.responsible.ResponsibleJpaEntity;
 import br.com.facilit.kanban.infrastructure.persistence.responsible.ResponsibleJpaRepository;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Predicate;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +30,7 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,6 +64,39 @@ public class ProjectPersistenceAdapter implements ProjectRepository {
     @Transactional(readOnly = true)
     public PageResult<Project> findByStatus(ProjectStatus status, PageQuery pageQuery) {
         return toPageResult(repository.findByStatus(status, pageable(pageQuery)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<Project> search(ProjectFilter filter, PageQuery pageQuery) {
+        return toPageResult(repository.findAll(matching(filter), pageable(pageQuery)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProjectIndicators indicators() {
+        Map<ProjectStatus, ProjectJpaRepository.ProjectStatusSummaryView> summaries =
+                repository.summarizeByStatus().stream()
+                        .collect(Collectors.toMap(
+                                ProjectJpaRepository.ProjectStatusSummaryView::getStatus,
+                                Function.identity()));
+        List<ProjectStatusIndicator> byStatus = Arrays.stream(ProjectStatus.values())
+                .map(status -> {
+                    ProjectJpaRepository.ProjectStatusSummaryView summary = summaries.get(status);
+                    return summary == null
+                            ? new ProjectStatusIndicator(status, 0, 0)
+                            : new ProjectStatusIndicator(
+                                    status,
+                                    summary.getProjectCount(),
+                                    summary.getAverageDelayDays() == null
+                                            ? 0
+                                            : summary.getAverageDelayDays());
+                })
+                .toList();
+        return new ProjectIndicators(
+                repository.count(),
+                repository.countByDelayDaysGreaterThan(0),
+                byStatus);
     }
 
     @Override
@@ -107,6 +149,39 @@ public class ProjectPersistenceAdapter implements ProjectRepository {
                 page.getSize(),
                 page.getTotalElements(),
                 page.getTotalPages());
+    }
+
+    private static Specification<ProjectJpaEntity> matching(ProjectFilter filter) {
+        return (root, query, builder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (filter.status() != null) {
+                predicates.add(builder.equal(root.get("status"), filter.status()));
+            }
+            if (filter.responsibleId() != null || filter.secretariatId() != null) {
+                Join<ProjectJpaEntity, ResponsibleJpaEntity> responsibles = root.join("responsibles");
+                query.distinct(true);
+                if (filter.responsibleId() != null) {
+                    predicates.add(builder.equal(responsibles.get("id"), filter.responsibleId()));
+                }
+                if (filter.secretariatId() != null) {
+                    predicates.add(builder.equal(responsibles.get("secretariatId"), filter.secretariatId()));
+                }
+            }
+            if (filter.plannedFrom() != null) {
+                predicates.add(builder.greaterThanOrEqualTo(
+                        root.<LocalDate>get("plannedEnd"), filter.plannedFrom()));
+            }
+            if (filter.plannedTo() != null) {
+                predicates.add(builder.lessThanOrEqualTo(
+                        root.<LocalDate>get("plannedStart"), filter.plannedTo()));
+            }
+            if (filter.text() != null) {
+                predicates.add(builder.like(
+                        builder.lower(root.<String>get("name")),
+                        builder.lower(builder.literal("%" + filter.text() + "%"))));
+            }
+            return builder.and(predicates.toArray(Predicate[]::new));
+        };
     }
 
     private static PageRequest pageable(PageQuery pageQuery) {

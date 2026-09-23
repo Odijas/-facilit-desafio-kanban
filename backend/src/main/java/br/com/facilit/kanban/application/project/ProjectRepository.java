@@ -15,6 +15,10 @@ public interface ProjectRepository {
 
     PageResult<Project> findByStatus(ProjectStatus status, PageQuery pageQuery);
 
+    PageResult<Project> search(ProjectFilter filter, PageQuery pageQuery);
+
+    ProjectIndicators indicators();
+
     Project save(Project project);
 
     void deleteById(UUID id);
