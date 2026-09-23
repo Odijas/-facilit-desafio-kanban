@@ -6,7 +6,12 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   createProject,
@@ -15,7 +20,9 @@ import {
   KanbanApiError,
   listProjects,
   listResponsibles,
+  listSecretariats,
   type Project,
+  type ProjectFilters,
   type ProjectInput,
   type ProjectStatus,
   type ResponsibleInput,
@@ -25,10 +32,14 @@ import {
 import { DeleteProjectDialog } from "./DeleteProjectDialog";
 import { KanbanColumn } from "./KanbanColumn";
 import { ProjectDialog } from "./ProjectDialog";
+import { ProjectFiltersBar } from "./ProjectFiltersBar";
+import {
+  PROJECT_INDICATORS_QUERY_KEY,
+  PROJECTS_QUERY_KEY,
+  RESPONSIBLES_QUERY_KEY,
+  SECRETARIATS_QUERY_KEY,
+} from "./queryKeys";
 import { ResponsibleDialog } from "./ResponsibleDialog";
-
-const PROJECTS_QUERY_KEY: readonly string[] = ["projects"];
-const RESPONSIBLES_QUERY_KEY: readonly string[] = ["responsibles"];
 
 const KANBAN_COLUMNS: ReadonlyArray<{
   status: ProjectStatus;
@@ -58,6 +69,7 @@ function operationErrorMessage(error: unknown): string {
 
 export function KanbanBoard() {
   const queryClient = useQueryClient();
+  const [filters, setFilters] = useState<ProjectFilters>({});
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const [responsibleDialogOpen, setResponsibleDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -65,13 +77,19 @@ export function KanbanBoard() {
   const [operationError, setOperationError] = useState<string | null>(null);
 
   const projectsQuery = useQuery({
-    queryKey: PROJECTS_QUERY_KEY,
-    queryFn: () => listProjects(),
+    queryKey: [...PROJECTS_QUERY_KEY, filters],
+    queryFn: () => listProjects(filters),
+    placeholderData: keepPreviousData,
     retry: false,
   });
   const responsiblesQuery = useQuery({
     queryKey: RESPONSIBLES_QUERY_KEY,
     queryFn: () => listResponsibles(),
+    retry: false,
+  });
+  const secretariatsQuery = useQuery({
+    queryKey: SECRETARIATS_QUERY_KEY,
+    queryFn: () => listSecretariats(),
     retry: false,
   });
 
@@ -85,6 +103,9 @@ export function KanbanBoard() {
 
   const refreshProjects = async (): Promise<void> => {
     await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
+    await queryClient.invalidateQueries({
+      queryKey: PROJECT_INDICATORS_QUERY_KEY,
+    });
   };
 
   const createMutation = useMutation({
@@ -133,11 +154,16 @@ export function KanbanBoard() {
     onSuccess: async () => {
       setResponsibleDialogOpen(false);
       await queryClient.invalidateQueries({ queryKey: RESPONSIBLES_QUERY_KEY });
+      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
     },
     onError: (error) => setOperationError(operationErrorMessage(error)),
   });
 
-  if (projectsQuery.isPending || responsiblesQuery.isPending) {
+  if (
+    projectsQuery.isPending ||
+    responsiblesQuery.isPending ||
+    secretariatsQuery.isPending
+  ) {
     return (
       <Stack spacing={2} sx={{ alignItems: "center", py: 6 }}>
         <CircularProgress aria-label="Carregando quadro Kanban" />
@@ -146,7 +172,11 @@ export function KanbanBoard() {
     );
   }
 
-  if (projectsQuery.isError || responsiblesQuery.isError) {
+  if (
+    projectsQuery.isError ||
+    responsiblesQuery.isError ||
+    secretariatsQuery.isError
+  ) {
     return (
       <Alert
         action={
@@ -154,6 +184,7 @@ export function KanbanBoard() {
             onClick={() => {
               projectsQuery.refetch();
               responsiblesQuery.refetch();
+              secretariatsQuery.refetch();
             }}
           >
             Tentar novamente
@@ -168,6 +199,7 @@ export function KanbanBoard() {
 
   const projects = projectsQuery.data;
   const responsibles = responsiblesQuery.data;
+  const secretariats = secretariatsQuery.data;
   const projectPending = createMutation.isPending || updateMutation.isPending;
 
   return (
@@ -207,6 +239,13 @@ export function KanbanBoard() {
           </Button>
         </Stack>
       </Stack>
+
+      <ProjectFiltersBar
+        filters={filters}
+        responsibles={responsibles}
+        secretariats={secretariats}
+        onChange={setFilters}
+      />
 
       {operationError !== null && (
         <Alert onClose={() => setOperationError(null)} severity="error">
@@ -273,6 +312,7 @@ export function KanbanBoard() {
         errorMessage={responsibleDialogOpen ? operationError : null}
         open={responsibleDialogOpen}
         pending={responsibleMutation.isPending}
+        secretariats={secretariats}
         onClose={() => {
           setResponsibleDialogOpen(false);
           setOperationError(null);

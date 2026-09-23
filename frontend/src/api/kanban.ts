@@ -31,6 +31,13 @@ export type Responsible = {
   updatedAt: string;
 };
 
+export type Secretariat = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ProjectInput = {
   name: string;
   responsibleIds: string[];
@@ -45,6 +52,31 @@ export type ResponsibleInput = {
   email: string;
   position: string;
   secretariatId: string | null;
+};
+
+export type SecretariatInput = {
+  name: string;
+};
+
+export type ProjectFilters = {
+  status?: ProjectStatus;
+  secretariatId?: string;
+  responsibleId?: string;
+  plannedFrom?: string;
+  plannedTo?: string;
+  text?: string;
+};
+
+export type ProjectStatusIndicator = {
+  status: ProjectStatus;
+  projectCount: number;
+  averageDelayDays: number;
+};
+
+export type ProjectIndicators = {
+  totalProjects: number;
+  delayedProjects: number;
+  byStatus: ProjectStatusIndicator[];
 };
 
 export class KanbanApiError extends Error {
@@ -149,6 +181,61 @@ function parseResponsible(value: unknown): Responsible {
   };
 }
 
+function parseSecretariat(value: unknown): Secretariat {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== "string" ||
+    typeof value.name !== "string" ||
+    typeof value.createdAt !== "string" ||
+    typeof value.updatedAt !== "string"
+  ) {
+    throw new Error(
+      "Secretariats endpoint returned an invalid secretariat payload",
+    );
+  }
+
+  return {
+    id: value.id,
+    name: value.name,
+    createdAt: value.createdAt,
+    updatedAt: value.updatedAt,
+  };
+}
+
+function parseStatusIndicator(value: unknown): ProjectStatusIndicator {
+  if (
+    !isRecord(value) ||
+    !isProjectStatus(value.status) ||
+    typeof value.projectCount !== "number" ||
+    typeof value.averageDelayDays !== "number"
+  ) {
+    throw new Error("Indicators endpoint returned an invalid status payload");
+  }
+
+  return {
+    status: value.status,
+    projectCount: value.projectCount,
+    averageDelayDays: value.averageDelayDays,
+  };
+}
+
+function parseProjectIndicators(value: unknown): ProjectIndicators {
+  if (
+    !isRecord(value) ||
+    typeof value.totalProjects !== "number" ||
+    typeof value.delayedProjects !== "number" ||
+    !Array.isArray(value.byStatus)
+  ) {
+    throw new Error("Indicators endpoint returned an invalid payload");
+  }
+
+  return {
+    totalProjects: value.totalProjects,
+    delayedProjects: value.delayedProjects,
+    byStatus: value.byStatus.map(parseStatusIndicator),
+  };
+}
+
 function parsePage<T>(
   value: unknown,
   parseItem: (item: unknown) => T,
@@ -211,16 +298,45 @@ async function mutateJson(
   );
 }
 
+function setProjectFilterParams(
+  params: URLSearchParams,
+  filters: ProjectFilters,
+): void {
+  if (filters.status !== undefined) {
+    params.set("status", filters.status);
+  }
+  if (filters.secretariatId !== undefined && filters.secretariatId !== "") {
+    params.set("secretariatId", filters.secretariatId);
+  }
+  if (filters.responsibleId !== undefined && filters.responsibleId !== "") {
+    params.set("responsibleId", filters.responsibleId);
+  }
+  if (filters.plannedFrom !== undefined && filters.plannedFrom !== "") {
+    params.set("plannedFrom", filters.plannedFrom);
+  }
+  if (filters.plannedTo !== undefined && filters.plannedTo !== "") {
+    params.set("plannedTo", filters.plannedTo);
+  }
+  const text = filters.text?.trim();
+  if (text !== undefined && text !== "") {
+    params.set("text", text);
+  }
+}
+
 async function listAll<T>(
   endpoint: string,
   parseItem: (item: unknown) => T,
+  searchParams?: URLSearchParams,
 ): Promise<T[]> {
   const items: T[] = [];
   let page = 0;
 
   while (true) {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", page.toString());
+    params.set("size", "100");
     const response = await requireOk(
-      await fetch(`${endpoint}?page=${page}&size=100`, {
+      await fetch(`${endpoint}?${params.toString()}`, {
         credentials: "same-origin",
         headers: { Accept: "application/json" },
       }),
@@ -236,12 +352,28 @@ async function listAll<T>(
   }
 }
 
-export function listProjects(): Promise<Project[]> {
-  return listAll("/api/v1/projects", parseProject);
+export function listProjects(filters: ProjectFilters = {}): Promise<Project[]> {
+  const params = new URLSearchParams();
+  setProjectFilterParams(params, filters);
+  return listAll("/api/v1/projects", parseProject, params);
 }
 
 export function listResponsibles(): Promise<Responsible[]> {
   return listAll("/api/v1/responsibles", parseResponsible);
+}
+
+export function listSecretariats(): Promise<Secretariat[]> {
+  return listAll("/api/v1/secretariats", parseSecretariat);
+}
+
+export async function getProjectIndicators(): Promise<ProjectIndicators> {
+  const response = await requireOk(
+    await fetch("/api/v1/indicators/projects", {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    }),
+  );
+  return parseProjectIndicators(await response.json());
 }
 
 export async function createProject(input: ProjectInput): Promise<Project> {
@@ -268,9 +400,7 @@ export async function transitionProject(
   const response = await mutateJson(
     `/api/v1/projects/${projectId}/status`,
     "PATCH",
-    {
-      status,
-    },
+    { status },
   );
   return parseProject(await response.json());
 }
@@ -284,4 +414,27 @@ export async function createResponsible(
 ): Promise<Responsible> {
   const response = await mutateJson("/api/v1/responsibles", "POST", input);
   return parseResponsible(await response.json());
+}
+
+export async function createSecretariat(
+  input: SecretariatInput,
+): Promise<Secretariat> {
+  const response = await mutateJson("/api/v1/secretariats", "POST", input);
+  return parseSecretariat(await response.json());
+}
+
+export async function updateSecretariat(
+  secretariatId: string,
+  input: SecretariatInput,
+): Promise<Secretariat> {
+  const response = await mutateJson(
+    `/api/v1/secretariats/${secretariatId}`,
+    "PUT",
+    input,
+  );
+  return parseSecretariat(await response.json());
+}
+
+export async function deleteSecretariat(secretariatId: string): Promise<void> {
+  await mutateJson(`/api/v1/secretariats/${secretariatId}`, "DELETE");
 }
