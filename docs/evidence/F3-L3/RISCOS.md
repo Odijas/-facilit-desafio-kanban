@@ -14,3 +14,8 @@ Data: 2026-09-23
 - `[VERIFICADO]` fora do escopo: tracing distribuído, alertas do Prometheus e métricas de negócio.
 - `[VERIFICADO]` aviso não bloqueante mantido: bundle Vite acima de 500 kB.
 - `[VERIFICADO]` rev1 RED por asserção do gate (corpo exato do health). A raiz do health expõe só os nomes dos grupos `liveness`/`readiness`, sem componentes, banco ou versões; não há vazamento de detalhe. Corrigido no rev2 apenas no gate.
+
+## Fechamento — 2026-09-23
+
+- `[EXECUTADO PELO USUÁRIO · 2026-09-23]` gate rev2 com exit code 0: compilação Spring, `MetricsCredentialsTest`, `ObservabilityIT`, Compose com Actuator, Prometheus (alvo `up`), Grafana (datasource saudável e painel com 6 painéis) e logs ECS confirmados. Os `[DESCONHECIDO]` e `[HIPÓTESE]` acima (secret com origem `environment` no Compose local, rotas legadas e formato de saúde do datasource no Grafana 13.1.3) foram exercitados sem falha.
+- `[VERIFICADO]` mantidos, fora do escopo: tracing distribuído, alertas, métricas de negócio; aviso de bundle Vite acima de 500 kB.
