@@ -5,10 +5,12 @@ import br.com.facilit.kanban.application.common.PageResult;
 import br.com.facilit.kanban.application.secretariat.SaveSecretariatCommand;
 import br.com.facilit.kanban.application.secretariat.SecretariatService;
 import br.com.facilit.kanban.domain.secretariat.Secretariat;
+import br.com.facilit.kanban.infrastructure.security.AuthenticatedActorResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.security.Principal;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -27,15 +29,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class SecretariatRestController {
 
     private final SecretariatService service;
+    private final AuthenticatedActorResolver actorResolver;
 
-    public SecretariatRestController(SecretariatService service) {
+    public SecretariatRestController(SecretariatService service, AuthenticatedActorResolver actorResolver) {
         this.service = service;
+        this.actorResolver = actorResolver;
     }
 
     @PostMapping
     @Operation(summary = "Cria uma secretaria")
-    public ResponseEntity<SecretariatResponse> create(@Valid @RequestBody SecretariatRequest request) {
-        Secretariat created = service.create(new SaveSecretariatCommand(request.name()));
+    public ResponseEntity<SecretariatResponse> create(
+            @Valid @RequestBody SecretariatRequest request,
+            Principal principal) {
+        Secretariat created = service.create(
+                new SaveSecretariatCommand(request.name()),
+                actorResolver.resolve(principal));
         return ResponseEntity.created(URI.create("/api/v1/secretariats/" + created.id()))
                 .body(SecretariatResponse.from(created));
     }
@@ -64,13 +72,17 @@ public class SecretariatRestController {
     @PutMapping("/{id}")
     public SecretariatResponse update(
             @PathVariable UUID id,
-            @Valid @RequestBody SecretariatRequest request) {
-        return SecretariatResponse.from(service.update(id, new SaveSecretariatCommand(request.name())));
+            @Valid @RequestBody SecretariatRequest request,
+            Principal principal) {
+        return SecretariatResponse.from(service.update(
+                id,
+                new SaveSecretariatCommand(request.name()),
+                actorResolver.resolve(principal)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        service.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable UUID id, Principal principal) {
+        service.delete(id, actorResolver.resolve(principal));
         return ResponseEntity.noContent().build();
     }
 }

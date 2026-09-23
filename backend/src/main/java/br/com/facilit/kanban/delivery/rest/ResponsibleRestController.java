@@ -2,9 +2,11 @@ package br.com.facilit.kanban.delivery.rest;
 
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
+import br.com.facilit.kanban.application.responsible.ResponsibleCredentialService;
 import br.com.facilit.kanban.application.responsible.ResponsibleService;
 import br.com.facilit.kanban.application.responsible.SaveResponsibleCommand;
 import br.com.facilit.kanban.domain.responsible.Responsible;
+import br.com.facilit.kanban.infrastructure.security.AuthenticatedActorResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -14,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.security.Principal;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,9 +35,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class ResponsibleRestController {
 
     private final ResponsibleService service;
+    private final ResponsibleCredentialService credentialService;
+    private final AuthenticatedActorResolver actorResolver;
 
-    public ResponsibleRestController(ResponsibleService service) {
+    public ResponsibleRestController(
+            ResponsibleService service,
+            ResponsibleCredentialService credentialService,
+            AuthenticatedActorResolver actorResolver) {
         this.service = service;
+        this.credentialService = credentialService;
+        this.actorResolver = actorResolver;
     }
 
     @PostMapping
@@ -80,8 +90,10 @@ public class ResponsibleRestController {
                                 }
                                 """)))
     })
-    public ResponseEntity<ResponsibleResponse> create(@Valid @RequestBody ResponsibleRequest request) {
-        Responsible created = service.create(toCommand(request));
+    public ResponseEntity<ResponsibleResponse> create(
+            @Valid @RequestBody ResponsibleRequest request,
+            Principal principal) {
+        Responsible created = service.create(toCommand(request), actorResolver.resolve(principal));
         ResponsibleResponse response = ResponsibleResponse.from(created);
         return ResponseEntity.created(URI.create("/api/v1/responsibles/" + created.id())).body(response);
     }
@@ -110,13 +122,31 @@ public class ResponsibleRestController {
     @PutMapping("/{id}")
     public ResponsibleResponse update(
             @PathVariable UUID id,
-            @Valid @RequestBody ResponsibleRequest request) {
-        return ResponsibleResponse.from(service.update(id, toCommand(request)));
+            @Valid @RequestBody ResponsibleRequest request,
+            Principal principal) {
+        return ResponsibleResponse.from(service.update(id, toCommand(request), actorResolver.resolve(principal)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        service.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable UUID id, Principal principal) {
+        service.delete(id, actorResolver.resolve(principal));
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/credentials")
+    @Operation(summary = "Define ou redefine a senha de acesso de um responsável (somente ADMIN)")
+    public ResponseEntity<Void> setCredentials(
+            @PathVariable UUID id,
+            @Valid @RequestBody ResponsibleCredentialsRequest request,
+            Principal principal) {
+        credentialService.setPassword(id, request.password(), actorResolver.resolve(principal));
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/credentials")
+    @Operation(summary = "Revoga o acesso de um responsável (somente ADMIN)")
+    public ResponseEntity<Void> revokeCredentials(@PathVariable UUID id, Principal principal) {
+        credentialService.revoke(id, actorResolver.resolve(principal));
         return ResponseEntity.noContent().build();
     }
 

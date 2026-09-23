@@ -7,6 +7,7 @@ import br.com.facilit.kanban.application.project.ProjectService;
 import br.com.facilit.kanban.application.project.SaveProjectCommand;
 import br.com.facilit.kanban.domain.project.Project;
 import br.com.facilit.kanban.domain.project.ProjectStatus;
+import br.com.facilit.kanban.infrastructure.security.AuthenticatedActorResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -16,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.security.Principal;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -37,9 +39,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProjectRestController {
 
     private final ProjectService service;
+    private final AuthenticatedActorResolver actorResolver;
 
-    public ProjectRestController(ProjectService service) {
+    public ProjectRestController(ProjectService service, AuthenticatedActorResolver actorResolver) {
         this.service = service;
+        this.actorResolver = actorResolver;
     }
 
     @PostMapping
@@ -93,8 +97,10 @@ public class ProjectRestController {
                                 }
                                 """)))
     })
-    public ResponseEntity<ProjectResponse> create(@Valid @RequestBody ProjectRequest request) {
-        Project created = service.create(toCommand(request));
+    public ResponseEntity<ProjectResponse> create(
+            @Valid @RequestBody ProjectRequest request,
+            Principal principal) {
+        Project created = service.create(toCommand(request), actorResolver.resolve(principal));
         ProjectResponse response = ProjectResponse.from(created);
         return ResponseEntity.created(URI.create("/api/v1/projects/" + created.id())).body(response);
     }
@@ -139,21 +145,23 @@ public class ProjectRestController {
     @PutMapping("/{id}")
     public ProjectResponse update(
             @PathVariable UUID id,
-            @Valid @RequestBody ProjectRequest request) {
-        return ProjectResponse.from(service.update(id, toCommand(request)));
+            @Valid @RequestBody ProjectRequest request,
+            Principal principal) {
+        return ProjectResponse.from(service.update(id, toCommand(request), actorResolver.resolve(principal)));
     }
 
     @PatchMapping("/{id}/status")
     @Operation(summary = "Executa uma transição Kanban")
     public ProjectResponse transition(
             @PathVariable UUID id,
-            @Valid @RequestBody ProjectStatusRequest request) {
-        return ProjectResponse.from(service.transition(id, request.status()));
+            @Valid @RequestBody ProjectStatusRequest request,
+            Principal principal) {
+        return ProjectResponse.from(service.transition(id, request.status(), actorResolver.resolve(principal)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        service.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable UUID id, Principal principal) {
+        service.delete(id, actorResolver.resolve(principal));
         return ResponseEntity.noContent().build();
     }
 

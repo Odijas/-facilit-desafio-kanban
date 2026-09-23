@@ -1,5 +1,6 @@
 package br.com.facilit.kanban.application.secretariat;
 
+import br.com.facilit.kanban.application.common.Actor;
 import br.com.facilit.kanban.application.common.ConflictException;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
@@ -27,8 +28,10 @@ public final class SecretariatService {
         this.clock = Objects.requireNonNull(clock);
     }
 
-    public Secretariat create(SaveSecretariatCommand command) {
+    public Secretariat create(SaveSecretariatCommand command, Actor actor) {
         Objects.requireNonNull(command, "command is required");
+        Objects.requireNonNull(actor, "actor is required");
+        actor.requireAdmin();
         Instant now = clock.instant();
         Secretariat secretariat = new Secretariat(
                 UUID.randomUUID(),
@@ -48,8 +51,10 @@ public final class SecretariatService {
         return secretariatRepository.findAll(pageQuery);
     }
 
-    public Secretariat update(UUID id, SaveSecretariatCommand command) {
+    public Secretariat update(UUID id, SaveSecretariatCommand command, Actor actor) {
         Objects.requireNonNull(command, "command is required");
+        Objects.requireNonNull(actor, "actor is required");
+        actor.requireAdmin();
         Secretariat current = get(id);
         Secretariat updated = new Secretariat(
                 current.id(),
@@ -58,7 +63,9 @@ public final class SecretariatService {
         return secretariatRepository.save(updated);
     }
 
-    public void delete(UUID id) {
+    public void delete(UUID id, Actor actor) {
+        Objects.requireNonNull(actor, "actor is required");
+        actor.requireAdmin();
         Secretariat current = get(id);
         if (responsibleRepository.existsBySecretariatId(current.id())) {
             throw new ConflictException("Secretariat is assigned to at least one responsible");

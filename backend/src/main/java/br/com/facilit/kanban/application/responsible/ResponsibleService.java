@@ -1,5 +1,6 @@
 package br.com.facilit.kanban.application.responsible;
 
+import br.com.facilit.kanban.application.common.Actor;
 import br.com.facilit.kanban.application.common.ConflictException;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
@@ -18,21 +19,26 @@ public final class ResponsibleService {
     private final ResponsibleRepository responsibleRepository;
     private final SecretariatRepository secretariatRepository;
     private final ProjectRepository projectRepository;
+    private final ResponsibleCredentialRepository credentialRepository;
     private final Clock clock;
 
     public ResponsibleService(
             ResponsibleRepository responsibleRepository,
             SecretariatRepository secretariatRepository,
             ProjectRepository projectRepository,
+            ResponsibleCredentialRepository credentialRepository,
             Clock clock) {
         this.responsibleRepository = Objects.requireNonNull(responsibleRepository);
         this.secretariatRepository = Objects.requireNonNull(secretariatRepository);
         this.projectRepository = Objects.requireNonNull(projectRepository);
+        this.credentialRepository = Objects.requireNonNull(credentialRepository);
         this.clock = Objects.requireNonNull(clock);
     }
 
-    public Responsible create(SaveResponsibleCommand command) {
+    public Responsible create(SaveResponsibleCommand command, Actor actor) {
         Objects.requireNonNull(command, "command is required");
+        Objects.requireNonNull(actor, "actor is required");
+        actor.requireAdmin();
         Instant now = clock.instant();
         Responsible responsible = new Responsible(
                 UUID.randomUUID(),
@@ -58,8 +64,10 @@ public final class ResponsibleService {
         return responsibleRepository.findAll(pageQuery);
     }
 
-    public Responsible update(UUID id, SaveResponsibleCommand command) {
+    public Responsible update(UUID id, SaveResponsibleCommand command, Actor actor) {
         Objects.requireNonNull(command, "command is required");
+        Objects.requireNonNull(actor, "actor is required");
+        actor.requireAdmin();
         Responsible current = get(id);
         Responsible updated = new Responsible(
                 current.id(),
@@ -71,10 +79,13 @@ public final class ResponsibleService {
 
         validateSecretariat(updated.secretariatId());
         ensureEmailAvailable(updated.email(), updated.id());
+        ensureLoginEmailAvailable(updated);
         return responsibleRepository.save(updated);
     }
 
-    public void delete(UUID id) {
+    public void delete(UUID id, Actor actor) {
+        Objects.requireNonNull(actor, "actor is required");
+        actor.requireAdmin();
         Responsible responsible = get(id);
         if (projectRepository.existsByResponsibleId(responsible.id())) {
             throw new ConflictException("Responsible is assigned to at least one project");
@@ -85,6 +96,13 @@ public final class ResponsibleService {
     private void validateSecretariat(UUID secretariatId) {
         if (secretariatId != null && !secretariatRepository.existsById(secretariatId)) {
             throw new ResourceNotFoundException("Secretariat not found: " + secretariatId);
+        }
+    }
+
+    private void ensureLoginEmailAvailable(Responsible responsible) {
+        if (credentialRepository.existsForResponsible(responsible.id())
+                && credentialRepository.loginEmailTakenByAnotherUser(responsible.email(), responsible.id())) {
+            throw new ConflictException(ResponsibleCredentialService.LOGIN_EMAIL_CONFLICT);
         }
     }
 

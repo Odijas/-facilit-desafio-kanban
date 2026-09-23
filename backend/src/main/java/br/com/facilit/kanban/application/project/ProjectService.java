@@ -1,5 +1,7 @@
 package br.com.facilit.kanban.application.project;
 
+import br.com.facilit.kanban.application.common.Actor;
+import br.com.facilit.kanban.application.common.ForbiddenOperationException;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
@@ -39,8 +41,10 @@ public final class ProjectService {
         this.clock = Objects.requireNonNull(clock);
     }
 
-    public Project create(SaveProjectCommand command) {
+    public Project create(SaveProjectCommand command, Actor actor) {
         Objects.requireNonNull(command, "command is required");
+        Objects.requireNonNull(actor, "actor is required");
+        requireMembership(command.responsibleIds(), actor);
         validateResponsibles(command.responsibleIds());
 
         ProjectDates dates = datesFrom(command);
@@ -83,9 +87,12 @@ public final class ProjectService {
         return projectRepository.indicators();
     }
 
-    public Project update(UUID id, SaveProjectCommand command) {
+    public Project update(UUID id, SaveProjectCommand command, Actor actor) {
         Objects.requireNonNull(command, "command is required");
+        Objects.requireNonNull(actor, "actor is required");
         Project current = get(id);
+        requireMembership(current.responsibleIds(), actor);
+        requireMembership(command.responsibleIds(), actor);
         validateResponsibles(command.responsibleIds());
 
         ProjectDates dates = datesFrom(command);
@@ -100,9 +107,11 @@ public final class ProjectService {
         return projectRepository.save(updated);
     }
 
-    public Project transition(UUID id, ProjectStatus requestedStatus) {
+    public Project transition(UUID id, ProjectStatus requestedStatus, Actor actor) {
         Objects.requireNonNull(requestedStatus, "requestedStatus is required");
+        Objects.requireNonNull(actor, "actor is required");
         Project current = get(id);
+        requireMembership(current.responsibleIds(), actor);
         ProjectTransitionResult transition = statusTransition.transition(
                 current,
                 requestedStatus,
@@ -117,9 +126,18 @@ public final class ProjectService {
         return projectRepository.save(updated);
     }
 
-    public void delete(UUID id) {
+    public void delete(UUID id, Actor actor) {
+        Objects.requireNonNull(actor, "actor is required");
         Project project = get(id);
+        requireMembership(project.responsibleIds(), actor);
         projectRepository.deleteById(project.id());
+    }
+
+    private static void requireMembership(Set<UUID> responsibleIds, Actor actor) {
+        if (!actor.canManage(responsibleIds)) {
+            throw new ForbiddenOperationException(
+                    "Responsible users can only manage projects they are assigned to");
+        }
     }
 
     private void validateResponsibles(Set<UUID> responsibleIds) {

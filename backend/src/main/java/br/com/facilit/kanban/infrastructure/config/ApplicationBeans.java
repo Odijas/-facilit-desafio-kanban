@@ -2,6 +2,8 @@ package br.com.facilit.kanban.infrastructure.config;
 
 import br.com.facilit.kanban.application.project.ProjectRepository;
 import br.com.facilit.kanban.application.project.ProjectService;
+import br.com.facilit.kanban.application.responsible.ResponsibleCredentialRepository;
+import br.com.facilit.kanban.application.responsible.ResponsibleCredentialService;
 import br.com.facilit.kanban.application.responsible.ResponsibleRepository;
 import br.com.facilit.kanban.application.responsible.ResponsibleService;
 import br.com.facilit.kanban.application.secretariat.SecretariatRepository;
@@ -35,11 +37,24 @@ public class ApplicationBeans {
             ResponsibleRepository responsibleRepository,
             SecretariatRepository secretariatRepository,
             ProjectRepository projectRepository,
+            ResponsibleCredentialRepository responsibleCredentialRepository,
             Clock applicationClock) {
         return new ResponsibleService(
                 responsibleRepository,
                 secretariatRepository,
                 projectRepository,
+                responsibleCredentialRepository,
+                applicationClock);
+    }
+
+    @Bean
+    ResponsibleCredentialService responsibleCredentialService(
+            ResponsibleRepository responsibleRepository,
+            ResponsibleCredentialRepository responsibleCredentialRepository,
+            Clock applicationClock) {
+        return new ResponsibleCredentialService(
+                responsibleRepository,
+                responsibleCredentialRepository,
                 applicationClock);
     }
 
