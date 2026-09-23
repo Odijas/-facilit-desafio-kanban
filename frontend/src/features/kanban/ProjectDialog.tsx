@@ -22,6 +22,7 @@ type ProjectDialogProps = {
   responsibles: Responsible[];
   pending: boolean;
   errorMessage: string | null;
+  requiredResponsibleId: string | null;
   onClose: () => void;
   onSubmit: (input: ProjectInput) => void;
 };
@@ -32,6 +33,7 @@ export function ProjectDialog({
   responsibles,
   pending,
   errorMessage,
+  requiredResponsibleId,
   onClose,
   onSubmit,
 }: ProjectDialogProps) {
@@ -46,10 +48,16 @@ export function ProjectDialog({
     }
 
     setName(project?.name ?? "");
-    setResponsibleIds(project?.responsibleIds ?? []);
+    const initialIds = project?.responsibleIds ?? [];
+    setResponsibleIds(
+      requiredResponsibleId !== null &&
+        !initialIds.includes(requiredResponsibleId)
+        ? [...initialIds, requiredResponsibleId]
+        : initialIds,
+    );
     setPlannedStart(project?.plannedStart ?? "");
     setPlannedEnd(project?.plannedEnd ?? "");
-  }, [open, project]);
+  }, [open, project, requiredResponsibleId]);
 
   const canSubmit =
     name.trim().length > 0 && responsibleIds.length > 0 && !pending;
@@ -111,6 +119,7 @@ export function ProjectDialog({
                     control={
                       <Checkbox
                         checked={responsibleIds.includes(responsible.id)}
+                        disabled={responsible.id === requiredResponsibleId}
                         onChange={(event) => {
                           setResponsibleIds((current) =>
                             event.target.checked

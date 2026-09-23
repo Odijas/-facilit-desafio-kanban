@@ -17,6 +17,7 @@ type KanbanColumnProps = {
   projects: Project[];
   responsibleNames: ReadonlyMap<string, string>;
   transitionPending: boolean;
+  canManageProject: (project: Project) => boolean;
   onDropProject: (projectId: string, status: ProjectStatus) => void;
   onEditProject: (project: Project) => void;
   onDeleteProject: (project: Project) => void;
@@ -28,6 +29,7 @@ export function KanbanColumn({
   projects,
   responsibleNames,
   transitionPending,
+  canManageProject,
   onDropProject,
   onEditProject,
   onDeleteProject,
@@ -60,62 +62,71 @@ export function KanbanColumn({
           </Typography>
         )}
 
-        {projects.map((project) => (
-          <Card
-            key={project.id}
-            aria-label={`Projeto ${project.name}`}
-            draggable={!transitionPending}
-            role="article"
-            variant="outlined"
-            onDragStart={(event) => {
-              event.dataTransfer.effectAllowed = "move";
-              event.dataTransfer.setData("text/plain", project.id);
-            }}
-          >
-            <CardContent>
-              <Stack spacing={1}>
-                <Typography sx={{ fontWeight: 700 }}>{project.name}</Typography>
-                <Typography color="text.secondary" variant="body2">
-                  {project.responsibleIds
-                    .map((id) => responsibleNames.get(id) ?? id)
-                    .join(", ")}
-                </Typography>
-                {project.plannedEnd !== null && (
-                  <Typography color="text.secondary" variant="body2">
-                    Término previsto: {project.plannedEnd}
+        {projects.map((project) => {
+          const manageable = canManageProject(project);
+          return (
+            <Card
+              key={project.id}
+              aria-label={`Projeto ${project.name}`}
+              draggable={manageable && !transitionPending}
+              role="article"
+              variant="outlined"
+              onDragStart={(event) => {
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData("text/plain", project.id);
+              }}
+            >
+              <CardContent>
+                <Stack spacing={1}>
+                  <Typography sx={{ fontWeight: 700 }}>
+                    {project.name}
                   </Typography>
-                )}
-                <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-                  <Chip
-                    label={`${project.remainingTimePercentage}% restante`}
-                    size="small"
-                    variant="outlined"
-                  />
-                  {project.delayDays > 0 && (
-                    <Chip
-                      color="error"
-                      label={`${project.delayDays} dia(s) de atraso`}
-                      size="small"
-                    />
+                  <Typography color="text.secondary" variant="body2">
+                    {project.responsibleIds
+                      .map((id) => responsibleNames.get(id) ?? id)
+                      .join(", ")}
+                  </Typography>
+                  {project.plannedEnd !== null && (
+                    <Typography color="text.secondary" variant="body2">
+                      Término previsto: {project.plannedEnd}
+                    </Typography>
                   )}
+                  <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+                    <Chip
+                      label={`${project.remainingTimePercentage}% restante`}
+                      size="small"
+                      variant="outlined"
+                    />
+                    {project.delayDays > 0 && (
+                      <Chip
+                        color="error"
+                        label={`${project.delayDays} dia(s) de atraso`}
+                        size="small"
+                      />
+                    )}
+                  </Stack>
                 </Stack>
-              </Stack>
-            </CardContent>
-            <Divider />
-            <CardActions>
-              <Button size="small" onClick={() => onEditProject(project)}>
-                Editar
-              </Button>
-              <Button
-                color="error"
-                size="small"
-                onClick={() => onDeleteProject(project)}
-              >
-                Excluir
-              </Button>
-            </CardActions>
-          </Card>
-        ))}
+              </CardContent>
+              {manageable && (
+                <>
+                  <Divider />
+                  <CardActions>
+                    <Button size="small" onClick={() => onEditProject(project)}>
+                      Editar
+                    </Button>
+                    <Button
+                      color="error"
+                      size="small"
+                      onClick={() => onDeleteProject(project)}
+                    >
+                      Excluir
+                    </Button>
+                  </CardActions>
+                </>
+              )}
+            </Card>
+          );
+        })}
       </Stack>
     </Box>
   );

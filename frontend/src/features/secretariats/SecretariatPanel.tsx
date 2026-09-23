@@ -38,7 +38,11 @@ function operationErrorMessage(error: unknown): string {
     : "Não foi possível concluir a operação.";
 }
 
-export function SecretariatPanel() {
+type SecretariatPanelProps = {
+  canManage: boolean;
+};
+
+export function SecretariatPanel({ canManage }: SecretariatPanelProps) {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Secretariat | null>(null);
@@ -122,16 +126,18 @@ export function SecretariatPanel() {
             Organize os responsáveis por secretaria.
           </Typography>
         </Box>
-        <Button
-          onClick={() => {
-            setEditing(null);
-            setOperationError(null);
-            setDialogOpen(true);
-          }}
-          variant="outlined"
-        >
-          Nova secretaria
-        </Button>
+        {canManage && (
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setOperationError(null);
+              setDialogOpen(true);
+            }}
+            variant="outlined"
+          >
+            Nova secretaria
+          </Button>
+        )}
       </Stack>
 
       {operationError !== null && !dialogOpen && (
@@ -157,29 +163,31 @@ export function SecretariatPanel() {
                   {secretariat.name}
                 </Typography>
               </CardContent>
-              <CardActions>
-                <Button
-                  size="small"
-                  onClick={() => {
-                    setEditing(secretariat);
-                    setOperationError(null);
-                    setDialogOpen(true);
-                  }}
-                >
-                  Editar
-                </Button>
-                <Button
-                  color="error"
-                  disabled={deleteMutation.isPending}
-                  size="small"
-                  onClick={() => {
-                    setOperationError(null);
-                    setDeleteCandidate(secretariat);
-                  }}
-                >
-                  Excluir
-                </Button>
-              </CardActions>
+              {canManage && (
+                <CardActions>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setEditing(secretariat);
+                      setOperationError(null);
+                      setDialogOpen(true);
+                    }}
+                  >
+                    Editar
+                  </Button>
+                  <Button
+                    color="error"
+                    disabled={deleteMutation.isPending}
+                    size="small"
+                    onClick={() => {
+                      setOperationError(null);
+                      setDeleteCandidate(secretariat);
+                    }}
+                  >
+                    Excluir
+                  </Button>
+                </CardActions>
+              )}
             </Card>
           ))}
         </Box>
