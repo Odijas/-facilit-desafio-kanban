@@ -29,6 +29,10 @@ vi.mock("./api/health", () => ({
   getHealthStatus: vi.fn(),
 }));
 
+vi.mock("./features/kanban/KanbanBoard", () => ({
+  KanbanBoard: () => <div>Quadro Kanban</div>,
+}));
+
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
 const mockedLogin = vi.mocked(login);
 const mockedLogout = vi.mocked(logout);
@@ -88,7 +92,9 @@ describe("App", () => {
     await user.type(screen.getByLabelText(/Senha/), "secret-value");
     await user.click(screen.getByRole("button", { name: "Entrar" }));
 
-    expect(await screen.findByText("Painel administrativo")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Painel administrativo"),
+    ).toBeInTheDocument();
     expect(screen.getByText("admin@example.invalid")).toBeInTheDocument();
     expect(window.location.pathname).toBe("/");
   });
