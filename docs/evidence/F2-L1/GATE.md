@@ -2,7 +2,7 @@
 
 Data: 2026-09-22
 
-Estado: **CANDIDATE / aguardando execução local**.
+Estado: **GREEN**.
 
 Critérios para GREEN:
 
@@ -18,4 +18,4 @@ Critérios para GREEN:
 - credenciais de prova não aparecem nos logs;
 - `git diff --check` limpo.
 
-Promoção somente após `VERIFICACAO-USUARIO.md` terminar com `=== F2-L1 GREEN ===` e `Resultado: exit code 0`.
+`[EXECUTADO PELO USUÁRIO · 2026-09-22]` O gate isolado terminou com `Resultado: exit code 0`; F2-L1 foi promovido para GREEN.

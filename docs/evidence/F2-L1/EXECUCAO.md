@@ -26,3 +26,10 @@ Data: 2026-09-22
 ## Não executado neste ambiente
 
 `[DESCONHECIDO]` Maven/Spring em Java 25, Testcontainers/Docker/PostgreSQL, autenticação real, sessão/cookies, CSRF e frontend dependem do gate no ambiente do usuário. Este ambiente possui Java 21, não possui Maven/Docker e não substitui a execução local prevalente.
+
+## Fechamento
+
+```text
+[EXECUTADO PELO USUÁRIO · 2026-09-22] gate F2-L1 terminou com health `UP` e `Resultado: exit code 0`.
+[CONCLUSÃO] F2-L1 promovido para GREEN.
+```
