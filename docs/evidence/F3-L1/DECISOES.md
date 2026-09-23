@@ -33,3 +33,9 @@ Data: 2026-09-22
 ## Rev4 — 2026-09-22
 
 - `[EXECUTADO]` correção mínima no gate: `$secretariatId: ID` → `$secretariatId: ID!`. Uma variável não nula pode ser usada tanto em `projects(secretariatId: ID)` quanto em `secretariat(id: ID!)`; a validação por graphql-js contra o schema real confirmou. Nenhum arquivo de produção alterado no rev4.
+
+## Decisões do usuário — 2026-09-23
+
+- `[DECISÃO DO USUÁRIO]` emenda ao plano aprovada: novo **F3-L2 — Autenticação do responsável + erro seguro**; Observabilidade passa a **F3-L3**; Engenharia de entrega passa a **F3-L4**.
+- `[DECISÃO DO USUÁRIO]` autorização no F3-L2: o responsável faz CRUD somente dos projetos em que é responsável (e se inclui ao criar); responsáveis, secretarias e credenciais ficam exclusivamente com o ADMIN. Fundamento: OWASP A01:2025 (negar por padrão; exigir posse do registro) e o risco de tomada de conta, já que o login usa o e-mail do responsável.
+- `[DECISÃO DO USUÁRIO]` o GitLab do projeto é o gitlab.com; o repositório de entrega continua público no GitHub, conforme o desafio.
