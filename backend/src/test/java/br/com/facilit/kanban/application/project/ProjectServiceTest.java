@@ -8,6 +8,7 @@ import br.com.facilit.kanban.application.common.ForbiddenOperationException;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
 import br.com.facilit.kanban.application.support.CapturedBusinessLog;
+import br.com.facilit.kanban.application.support.DirectTransactionRunner;
 import br.com.facilit.kanban.application.support.InMemoryProjectRepository;
 import br.com.facilit.kanban.application.support.InMemoryResponsibleRepository;
 import br.com.facilit.kanban.domain.common.AuditMetadata;
@@ -52,6 +53,7 @@ class ProjectServiceTest {
                 projectRepository,
                 responsibleRepository,
                 new ProjectScheduleCalculator(),
+                new DirectTransactionRunner(),
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 

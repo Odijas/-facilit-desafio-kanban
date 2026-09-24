@@ -7,6 +7,7 @@ import br.com.facilit.kanban.application.common.Actor;
 import br.com.facilit.kanban.application.common.ConflictException;
 import br.com.facilit.kanban.application.common.ForbiddenOperationException;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
+import br.com.facilit.kanban.application.support.DirectTransactionRunner;
 import br.com.facilit.kanban.application.support.InMemoryResponsibleCredentialRepository;
 import br.com.facilit.kanban.application.support.InMemoryResponsibleRepository;
 import br.com.facilit.kanban.domain.common.AuditMetadata;
@@ -40,6 +41,7 @@ class ResponsibleCredentialServiceTest {
         service = new ResponsibleCredentialService(
                 responsibleRepository,
                 credentialRepository,
+                new DirectTransactionRunner(),
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 

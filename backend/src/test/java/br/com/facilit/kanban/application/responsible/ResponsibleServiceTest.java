@@ -8,6 +8,7 @@ import br.com.facilit.kanban.application.common.ConflictException;
 import br.com.facilit.kanban.application.common.ForbiddenOperationException;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
+import br.com.facilit.kanban.application.support.DirectTransactionRunner;
 import br.com.facilit.kanban.application.support.InMemoryProjectRepository;
 import br.com.facilit.kanban.application.support.InMemoryResponsibleCredentialRepository;
 import br.com.facilit.kanban.application.support.InMemoryResponsibleRepository;
@@ -48,6 +49,7 @@ class ResponsibleServiceTest {
                 secretariatRepository,
                 projectRepository,
                 credentialRepository,
+                new DirectTransactionRunner(),
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
