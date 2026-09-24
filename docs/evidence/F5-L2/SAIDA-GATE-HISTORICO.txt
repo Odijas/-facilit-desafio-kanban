@@ -1,0 +1,53 @@
+=== PRÉ-CONDIÇÕES ===
+   63 arquivos alterados, todos do pacote F5-L2
+   branch feature/f5-l2-revalidate-history sobre o F5-L1 commitado
+F5_L2_PRECONDITIONS_GREEN
+=== FRONTEND: FORMAT + LINT + TYPECHECK + STRICT + TEST + BUILD ===
+   STRICT_TYPES_GREEN 32
+   Test Files  6 passed (6)
+   Tests  33 passed (33)
+F5_L2_FRONTEND_GREEN
+=== BACKEND: CLEAN VERIFY ===
+   linhas com 'deprecat' no log do Maven (ferramentas, informativo): 1
+   unitários: 15 classes, 91 testes, 0 falhas, 0 erros, 0 ignorados
+   integração: 6 classes, 20 testes, 0 falhas, 0 erros, 0 ignorados
+   ProjectStatusTransitionTest: 24 testes OK
+   RestExceptionHandlerTest: 7 testes OK
+   ProjectServiceTest: 9 testes OK
+   OpenApiContractIT: 3 testes OK
+F5_L2_BACKEND_GREEN
+=== ESTÁTICA ===
+   63 arquivos do lote OK; README, F5-L1 GREEN e coleção OK
+F5_L2_STATIC_GREEN
+=== DOCKER: BANCO NOVO ===
+   banco novo (facilit-kanban-f5l2); migrations V1 2 3 4 5 6
+F5_L2_DOCKER_GREEN
+=== API: CONTRATO DE ERRO E CONFIRMAÇÕES ===
+  ok 1 login ADMIN
+  ok 2 criar responsável
+  ok 3 e-mail duplicado → 409
+  ok 4 e-mail inválido → 400
+   mensagem de validação: deve ser um endereço de e-mail bem formado
+  ok 5 criar projeto
+  ok 6 A iniciar → Em andamento
+  ok 7 Em andamento → Atrasado → 422
+  ok 8 Em andamento → A iniciar sem confirm → 422
+  ok 9 nada gravado sem confirmação
+  ok 10 Em andamento → A iniciar com confirm → 200
+  ok 11 GraphQL A iniciar → Em andamento
+  ok 12 GraphQL sem confirm
+  ok 13 GraphQL com confirm
+  ok 14 início realizado futuro → 422
+  ok 15 término previsto antes do início → 422
+  ok 16 projeto inexistente → 404
+F5_L2_API_GREEN
+=== OPENAPI: ERROS DOCUMENTADOS ===
+   23 operações /api/v1 com erros documentados em application/problem+json
+F5_L2_OPENAPI_GREEN
+=== LOGS DE NEGÓCIO (LOG ECS DO CONTÊINER) ===
+  ok 17 excluir projeto 386963ac-96a1-4bac-bb1b-f8c6d40c9c6d
+  ok 18 excluir responsável
+   11 eventos de negócio no log ECS (logger br.com.facilit.kanban.business); sem e-mail nem senha
+F5_L2_BUSINESS_LOGS_GREEN
+=== F5-L2 GREEN ===
+Resultado: exit code 0
