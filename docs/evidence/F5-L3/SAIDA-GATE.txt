@@ -1,0 +1,51 @@
+=== PRÉ-CONDIÇÕES ===
+   40 arquivos alterados, todos do pacote F5-L3; frontend intocado
+   branch feature/f5-l3-camadas-de-teste sobre o F5-L2 commitado
+F5_L3_PRECONDITIONS_GREEN
+=== BACKEND: CLEAN VERIFY ===
+   Mockito carregado como agente (sem autoanexo dinâmico)
+   linhas com 'deprecat' no log do Maven (ferramentas, informativo): 1
+   unitários: 23 classes, 140 testes, 0 falhas, 0 erros, 0 ignorados
+   integração: 9 classes, 45 testes, 0 falhas, 0 erros, 0 ignorados
+   ProjectRestControllerTest: 17 testes OK
+   ResponsibleRestControllerTest: 9 testes OK
+   SecretariatRestControllerTest: 6 testes OK
+   ProjectIndicatorsRestControllerTest: 2 testes OK
+   ProjectGraphQlControllerTest: 5 testes OK
+   ResponsibleGraphQlControllerTest: 3 testes OK
+   SecretariatGraphQlControllerTest: 2 testes OK
+   ProjectServiceMockitoTest: 5 testes OK
+   ProjectServiceTest: 9 testes OK
+   ProjectStatusTransitionTest: 24 testes OK
+   ProjectPersistenceAdapterIT: 5 testes OK
+   TransactionIT: 4 testes OK
+   StatusTransitionApiIT: 16 testes OK
+F5_L3_BACKEND_GREEN
+=== ESTÁTICA ===
+   40 arquivos do lote OK; README, F5-L2 GREEN, pom (agente do Mockito), V7 e @Version OK; sem @MockBean
+F5_L3_STATIC_GREEN
+=== DOCKER: BANCO NOVO + MIGRATIONS 1–7 ===
+   banco novo (facilit-kanban-f5l3); migrations V1 2 3 4 5 6 7; projects.version bigint NO 0
+F5_L3_DOCKER_GREEN
+=== API: VERSÃO, RECUSAS SEM GRAVAÇÃO E TABELA COM CONFIRMAÇÃO ===
+  ok 1 login ADMIN
+  ok 2 criar responsável
+  ok 3 criar projeto A iniciar
+  ok 4 versão ao criar
+  ok 5 editar projeto
+  ok 6 versão após editar
+  ok 7 linha 1: A iniciar → Em andamento
+  ok 8 versão após transição
+  ok 9 linha 5: Em andamento → Atrasado → 422
+  ok 10 linha 4 sem confirm → 422
+  ok 11 recusas não gravam (versão igual)
+  ok 12 linha 6: Em andamento → Concluído
+  ok 13 linha 12 com confirm, datas não dão Atrasado → 422
+  ok 14 linha 11 sem confirm → 422
+  ok 15 linha 11 com confirm → 200
+  ok 16 versão final
+  ok 17 excluir projeto
+  ok 18 excluir responsável
+F5_L3_API_GREEN
+=== F5-L3 GREEN ===
+Resultado: exit code 0

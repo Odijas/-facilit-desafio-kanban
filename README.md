@@ -26,7 +26,7 @@ API Java para gestão de projetos em quadro Kanban, feita para o Desafio Técnic
 | Status calculado, dias de atraso e % de tempo restante | domínio puro: `ProjectScheduleCalculator` |
 | Quadro Kanban e transições da tabela, com bloqueio e mensagem clara | `ProjectStatusTransition` + `PATCH /api/v1/projects/{id}/status` |
 | Indicadores (contagem e média de atraso por status) | `GET /api/v1/indicators/projects` e GraphQL `projectIndicators` |
-| Testes JUnit de services, controllers e integração | `backend/src/test` (unitários + ITs com Testcontainers/PostgreSQL) |
+| Testes JUnit de services, controllers e integração | `backend/src/test`: services com repositórios em memória e com Mockito; controllers REST e GraphQL isolados com o service simulado; repositório, transações e a tabela de transição pela API com PostgreSQL real (Testcontainers) |
 | Docker Compose (app + banco) | `compose.yaml` |
 | `AI_USAGE.md` | [`AI_USAGE.md`](AI_USAGE.md) |
 | Diferencial — GraphQL | `/graphql` (mesmos casos de uso do REST) |
@@ -55,7 +55,7 @@ flowchart LR
     SEC --> DEL --> APP --> DOM
     INF -. implementa portas .-> APP
   end
-  DB[("PostgreSQL 18.6<br/>Flyway V1–V6")]
+  DB[("PostgreSQL 18.6<br/>Flyway V1–V7")]
   PROM["Prometheus"] --> GRAF["Grafana"]
   UI -- "/api (proxy Vite)" --> SEC
   EXT --> SEC
@@ -67,6 +67,7 @@ flowchart LR
 - **Regra de negócio determinística no domínio.** Status, dias de atraso e % de tempo restante são calculados por `ProjectScheduleCalculator` a partir da data de hoje obtida de um `Clock` no fuso de negócio (`APP_TIME_ZONE`, padrão `America/Sao_Paulo`) injetado no `ProjectService`; as transições partem do status de hoje, aplicam só os efeitos da tabela do desafio e recalculam o status, bloqueando quando o resultado difere do pedido.
 - **Status sempre atual.** Os valores calculados ficam gravados, com a data do cálculo, para listar e filtrar por índice. Quando o dia muda, os projetos não concluídos são recalculados antes de qualquer leitura e também por agendamento à meia-noite ([ADR 0002](docs/adr/0002-status-sempre-atual.md)).
 - **Persistência.** PostgreSQL com Flyway (schema versionado e `ddl-auto: validate`), índices alinhados às consultas paginadas e filtros via JPA `Specification`.
+- **Transação por caso de uso.** Cada caso de uso de escrita roda inteiro numa transação, pela porta `TransactionRunner` (a aplicação continua sem Spring; a infraestrutura usa `TransactionTemplate`). Se algo falha no meio, nada do que o caso de uso gravou fica. Projetos têm `@Version`: duas edições simultâneas não se sobrescrevem, e a segunda a gravar recebe 409 `CONFLICT`.
 - **Contrato de erro estável.** `ProblemDetail` (RFC 9457) com `code` fixo no REST e `extensions.code` no GraphQL.
 - **Segurança por padrão.** Sessão HTTP com CSRF para SPA, senhas bcrypt, sem credencial padrão versionada, autorização de posse na camada de aplicação.
 - **Versões congeladas.** Java 25, Spring Boot 3.5.16, PostgreSQL 18.6, React 19.3, MUI 9.4, TanStack Query 5.102, TypeScript 5.9, Vite 8.3, Vitest 4.1, Biome 2.5, pnpm 12.5.1, Node 24.
@@ -148,6 +149,18 @@ cd backend
 mvn -B -ntp clean verify
 ```
 
+Camadas de teste do backend:
+
+| Camada | Como | Exemplos |
+|---|---|---|
+| Domínio | JUnit puro | `ProjectScheduleCalculatorTest`, `ProjectStatusTransitionTest` (as 12 linhas da tabela, com mensagens exatas) |
+| Services | repositórios em memória; interações com Mockito | `ProjectServiceTest`, `ProjectServiceMockitoTest` (bloqueio não grava; o recálculo roda antes da leitura) |
+| Controllers REST | `@WebMvcTest` com o service simulado (`@MockitoBean`) | `ProjectRestControllerTest`, `ResponsibleRestControllerTest`, `SecretariatRestControllerTest`, `ProjectIndicatorsRestControllerTest` |
+| Controllers GraphQL | `@GraphQlTest` com o service simulado | `ProjectGraphQlControllerTest`, `ResponsibleGraphQlControllerTest`, `SecretariatGraphQlControllerTest` |
+| Repositório | `@DataJpaTest` com PostgreSQL real e as migrations | `ProjectPersistenceAdapterIT` |
+| Transações | Spring Boot com PostgreSQL real | `TransactionIT` (falha no meio desfaz tudo; edição concorrente não sobrescreve) |
+| API | servidor real, sessão e CSRF | `StatusTransitionApiIT` (12 linhas pela REST e 3 pela GraphQL), `KanbanApiIT`, `SecurityApiIT`, `OpenApiContractIT` |
+
 Frontend:
 
 ```bash
@@ -220,7 +233,7 @@ backend/                     API Spring Boot (Maven)
     application/             casos de uso, portas e erros de aplicação (Actor, Conflict, NotFound, Forbidden)
     infrastructure/          JPA, segurança (sessão, CSRF, Actuator), configuração
     delivery/                REST, GraphQL e autenticação
-  src/main/resources/        application.yml, db/migration (Flyway V1–V6), graphql/*.graphqls
+  src/main/resources/        application.yml, db/migration (Flyway V1–V7), graphql/*.graphqls
   src/test/java/             unitários (domínio, serviços, controllers) e integração (*IT, Testcontainers)
 frontend/                    React 19 + MUI + TanStack Query (Vite)
   src/api/                   cliente HTTP e contratos, independente do React Query
@@ -251,7 +264,8 @@ O uso de IA no desenvolvimento está descrito em [`AI_USAGE.md`](AI_USAGE.md). A
 - Bundle do frontend acima de 500 kB (aviso não bloqueante do Vite); divisão de código é o próximo passo.
 - Execução dos testes de integração depende de Docker disponível (Testcontainers).
 - O recálculo diário grava status e métricas com a data do cálculo; com várias instâncias, cada uma pode repetir a verificação no mesmo dia, sem efeito (é idempotente).
-- Plano de conformidade em andamento (`docs/governance/PLANO-CONFORMIDADE-F5.md`): testes de controller com mocks, transação por caso de uso, `@Version` e a tabela de transição testada pela API estão no lote F5-L3.
+- Concorrência: o `@Version` protege contra duas gravações simultâneas. A API não recebe a versão do cliente, então não detecta que alguém editou o projeto entre a leitura na tela e o envio; nesse caso, a última gravação vale.
+- Plano de conformidade em andamento (`docs/governance/PLANO-CONFORMIDADE-F5.md`): os lotes seguintes cobrem a Etapa 3 completa e os diferenciais restantes (F5-L4, opcional) e a release (F5-L5).
 
 ## Governança e histórico de entrega
 
@@ -278,7 +292,8 @@ Estado dos lotes:
 - F3 — Diferenciais: GREEN em 2026-09-23.
 - F4 — Freeze e release `v1.0.0`: evidências em `docs/evidence/F4/` (auditoria requisito → implementação → teste → evidência, revisão de segurança, saída do gate de freeze).
 - F5-L1 — Regras sempre corretas (status de hoje, fuso, datas realizadas): GREEN em 2026-09-24.
-- F5-L2 — Contrato de erro, confirmações, Swagger e logs: CANDIDATE em 2026-09-24, aguardando gate local.
+- F5-L2 — Contrato de erro, confirmações, Swagger e logs: GREEN em 2026-09-24.
+- F5-L3 — Camadas de teste completas e transação por caso de uso: CANDIDATE em 2026-09-24, aguardando gate local.
 
 ### Resumo por lote
 
@@ -356,3 +371,12 @@ O F5-L1 corrige o principal desvio da v1.0.0 em relação ao desafio: status, di
 - erros documentados em todas as operações do Swagger, com exemplos (`ApiErrorDocumentation`);
 - logs de negócio sem dados pessoais;
 - coleção Postman atualizada (422 e confirmação).
+
+### F5-L3 — Camadas de teste completas e transação por caso de uso
+
+- porta `TransactionRunner` na aplicação e `SpringTransactionRunner` na infraestrutura; criar, editar, transicionar e excluir rodam inteiros numa transação, e os logs de negócio saem depois do commit;
+- migration V7 com a coluna `version` em `projects` e `@Version` na entidade; atualização concorrente responde 409 `CONFLICT` (REST e GraphQL);
+- testes de controller com o service simulado: 4 classes `@WebMvcTest` e 3 `@GraphQlTest`;
+- `ProjectServiceMockitoTest` verifica interações (bloqueio não grava, recálculo antes da leitura, ordem das chamadas);
+- testes de integração novos: `ProjectPersistenceAdapterIT` (`@DataJpaTest`), `TransactionIT` e `StatusTransitionApiIT` (a tabela inteira pela API);
+- agente do Mockito configurado explicitamente no Surefire e no Failsafe, como pede a documentação do Mockito para Java 21 ou mais novo.
