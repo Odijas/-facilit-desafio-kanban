@@ -3,7 +3,9 @@ package br.com.facilit.kanban.infrastructure.persistence.project;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
+import br.com.facilit.kanban.application.project.ProjectDeadlineIndicator;
 import br.com.facilit.kanban.application.project.ProjectFilter;
+import br.com.facilit.kanban.application.project.ProjectGroupIndicator;
 import br.com.facilit.kanban.application.project.ProjectIndicators;
 import br.com.facilit.kanban.application.project.ProjectRepository;
 import br.com.facilit.kanban.application.project.ProjectScheduleSnapshot;
@@ -19,6 +21,7 @@ import br.com.facilit.kanban.infrastructure.persistence.responsible.ResponsibleJ
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -104,6 +107,35 @@ public class ProjectPersistenceAdapter implements ProjectRepository {
                 repository.count(),
                 repository.countByDelayDaysGreaterThan(0),
                 byStatus);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProjectGroupIndicator> indicatorsBySecretariat() {
+        return repository.summarizeBySecretariat().stream()
+                .map(ProjectPersistenceAdapter::toGroupIndicator)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProjectGroupIndicator> indicatorsByResponsible() {
+        return repository.summarizeByResponsible().stream()
+                .map(ProjectPersistenceAdapter::toGroupIndicator)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProjectDeadlineIndicator> deadlines(LocalDate from, LocalDate to) {
+        return repository.findDeadlines(ProjectStatus.COMPLETED, from, to).stream()
+                .map(view -> new ProjectDeadlineIndicator(
+                        view.getProjectId(),
+                        view.getProjectName(),
+                        view.getStatus(),
+                        view.getPlannedEnd(),
+                        ChronoUnit.DAYS.between(from, view.getPlannedEnd())))
+                .toList();
     }
 
     @Override
@@ -238,6 +270,14 @@ public class ProjectPersistenceAdapter implements ProjectRepository {
         }
         return repository.findDetailedByIdIn(ids).stream()
                 .collect(Collectors.toMap(ProjectJpaEntity::getId, Function.identity()));
+    }
+
+    private static ProjectGroupIndicator toGroupIndicator(
+            ProjectJpaRepository.ProjectGroupSummaryView summary) {
+        return new ProjectGroupIndicator(
+                summary.getGroupId(),
+                summary.getProjectCount(),
+                summary.getAverageDelayDays() == null ? 0 : summary.getAverageDelayDays().doubleValue());
     }
 
     private static Project toDomain(ProjectJpaEntity entity) {

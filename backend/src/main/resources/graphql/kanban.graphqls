@@ -13,6 +13,9 @@ extend type Query {
     text: String
   ): ProjectPage!
   projectIndicators: ProjectIndicators!
+  projectIndicatorsBySecretariat: [ProjectGroupIndicator!]!
+  projectIndicatorsByResponsible: [ProjectGroupIndicator!]!
+  projectDeadlines(withinDays: Int = 7): ProjectDeadlines!
   secretariat(id: ID!): Secretariat!
   secretariats(page: Int = 0, size: Int = 20): SecretariatPage!
 }
@@ -129,4 +132,25 @@ type ProjectStatusIndicator {
   status: ProjectStatus!
   projectCount: Int!
   averageDelayDays: Float!
+}
+
+type ProjectGroupIndicator {
+  id: ID!
+  projectCount: Int!
+  averageDelayDays: Float!
+}
+
+type ProjectDeadlines {
+  withinDays: Int!
+  from: String!
+  to: String!
+  projects: [ProjectDeadlineIndicator!]!
+}
+
+type ProjectDeadlineIndicator {
+  projectId: ID!
+  projectName: String!
+  status: ProjectStatus!
+  plannedEnd: String!
+  daysUntilDeadline: Int!
 }

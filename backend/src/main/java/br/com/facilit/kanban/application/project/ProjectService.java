@@ -20,6 +20,7 @@ import br.com.facilit.kanban.domain.project.ProjectTransitionResult;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -115,6 +116,30 @@ public final class ProjectService {
     public ProjectIndicators indicators() {
         refreshSchedules();
         return projectRepository.indicators();
+    }
+
+    public List<ProjectGroupIndicator> indicatorsBySecretariat() {
+        refreshSchedules();
+        return projectRepository.indicatorsBySecretariat();
+    }
+
+    public List<ProjectGroupIndicator> indicatorsByResponsible() {
+        refreshSchedules();
+        return projectRepository.indicatorsByResponsible();
+    }
+
+    public ProjectDeadlineIndicators deadlines(int withinDays) {
+        if (withinDays < 1 || withinDays > 90) {
+            throw new IllegalArgumentException("withinDays deve estar entre 1 e 90.");
+        }
+        refreshSchedules();
+        LocalDate today = LocalDate.now(clock);
+        LocalDate to = today.plusDays(withinDays);
+        return new ProjectDeadlineIndicators(
+                withinDays,
+                today,
+                to,
+                projectRepository.deadlines(today, to));
     }
 
     public Project update(UUID id, SaveProjectCommand command, Actor actor) {
