@@ -21,6 +21,12 @@ public interface ProjectRepository {
 
     ProjectIndicators indicators();
 
+    List<ProjectGroupIndicator> indicatorsBySecretariat();
+
+    List<ProjectGroupIndicator> indicatorsByResponsible();
+
+    List<ProjectDeadlineIndicator> deadlines(LocalDate from, LocalDate to);
+
     /**
      * Grava o projeto com status e métricas calculados para {@code scheduleCalculatedOn}.
      */
