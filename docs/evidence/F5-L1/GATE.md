@@ -2,7 +2,7 @@
 
 Data: 2026-09-24
 
-Estado: **CANDIDATE rev2**, aguardando o gate local.
+Estado: **GREEN** (rev2, gate local em 2026-09-24).
 
 Histórico:
 
@@ -41,3 +41,29 @@ Critérios:
   - `actualStart` = data de São Paulo;
   - início realizado futuro → 400.
 - Marcador final `=== F5-L1 GREEN ===` e `Resultado: exit code 0`.
+
+Evidência final recebida do usuário:
+
+```text
+[EXECUTADO PELO USUÁRIO · 2026-09-24 09:07] gate F5-L1 rev2 (pacote SHA-256 ef481a2a…4d65 conferido: SUCESSO):
+  42 arquivos alterados, todos do pacote F5-L1; frontend intocado
+  branch feature/f5-l1-regras-sempre-corretas contém a release v1.0.0 (eef7a4a, mesmo conteúdo da tag)
+  F5_L1_PRECONDITIONS_GREEN
+  unitários: 15 classes, 79 testes, 0 falhas, 0 erros, 0 ignorados
+  integração: 5 classes, 17 testes, 0 falhas, 0 erros, 0 ignorados
+  ProjectScheduleRefresherTest 8 · ProjectDatesTest 4 · ProjectStatusTransitionTest 19 · ScheduleFreshnessIT 3 · ScheduleCalculationDateMigrationIT 1
+  F5_L1_BACKEND_GREEN
+  F5_L1_STATIC_GREEN
+  banco novo (facilit-kanban-f5l1); migrations V1 2 3 4 5 6; schedule_calculated_on NOT NULL; recálculo na subida registrado
+  F5_L1_DOCKER_CLEAN_DB_GREEN
+  hoje em America/Sao_Paulo: 2026-09-24 · 24 verificações da API ok (GET após 10 dias: OVERDUE 8 0; updated_at intacto;
+  Em andamento desatualizado → Atrasado recusado; actualStart = data de São Paulo; início realizado futuro → 400)
+  F5_L1_API_GREEN
+  === F5-L1 GREEN ===
+  Resultado: exit code 0
+[INFORMATIVO] 1 linha com "deprecat" no log do Maven: "WARNING: A terminally deprecated method in sun.misc.Unsafe has been
+  called". [HIPÓTESE] vem de uma ferramenta do build (Maven ou plugin) no JDK 25, não do código do projeto: o gate checa
+  que não há aviso [deprecation] na compilação (-Xlint:all -Werror).
+```
+
+Conclusão: F5-L1 promovido para GREEN em 2026-09-24.

@@ -77,7 +77,7 @@ As decisões de cada lote, com fonte e marcação de verificação, estão em `d
 
 - **Status**: A iniciar (sem início e término realizados), Em andamento (início realizado, término previsto maior ou igual a hoje, sem término realizado; ver [interpretações](#interpretações-do-enunciado)), Atrasado (início previsto vencido sem início realizado, ou término previsto vencido sem término realizado) e Concluído (término realizado preenchido). Editar datas recalcula o status.
 - **Status de hoje**: status, dias de atraso e % de tempo restante valem para a data de hoje, mesmo sem edição do projeto. Quando o dia muda, os projetos não concluídos são recalculados antes de qualquer leitura (projeto, quadro, filtros, indicadores e transição); `updatedAt` continua registrando só edições feitas pelo usuário.
-- **Transições**: seguem a tabela do desafio linha a linha (efeito automático, recálculo e bloqueio com mensagem quando o status final diverge do solicitado). Erros de transição respondem 400 `INVALID_REQUEST` com a orientação do desafio.
+- **Transições**: seguem a tabela do desafio linha a linha (efeito automático, recálculo e bloqueio com mensagem quando o status final diverge do solicitado). Transição bloqueada responde 422 `TRANSITION_BLOCKED`, com a orientação do desafio em pt-BR e os campos `currentStatus`/`requestedStatus`. Transições que apagam uma data já registrada (Em andamento → A iniciar; Concluído → Em andamento ou Atrasado) exigem `confirm: true`; sem ele, a resposta é 422 `CONFIRMATION_REQUIRED`, com `clearedField` indicando a data que seria apagada.
 - **Métricas**: dias de atraso e % de tempo restante conforme as fórmulas do desafio, com os casos de zero previstos (sem datas, concluído, prazo vencido).
 - **Responsável**: e-mail único (sem diferenciar maiúsculas); não pode ser removido enquanto estiver em projeto (409). **Secretaria**: não pode ser removida enquanto tiver responsável (409).
 
@@ -94,6 +94,8 @@ Pontos que o documento do desafio não define, com a escolha feita e onde ela é
 | Início ou término realizado depois de hoje | recusado: data realizada registra fato já ocorrido | `ProjectDatesTest`, `ProjectServiceTest.rejectsActualDatesAfterTodayOnCreateAndUpdate` |
 | Status gravado em outro dia | a transição parte do status de hoje; o valor gravado é recalculado antes da leitura | `ProjectStatusTransitionTest.doesNotLetStaleInProgressBypassTheInProgressToOverdueBlock`, `ProjectScheduleRefresherTest`, `ScheduleFreshnessIT` |
 | Linha "A iniciar → Atrasado" | com o status de hoje, nunca resulta em sucesso: se o início previsto já passou, o projeto já está Atrasado; se não passou, a tabela manda bloquear | `ProjectStatusTransitionTest.blocksNotStartedToOverdueBeforePlannedStart`, `blocksNotStartedToOverdueOnPlannedStartBecauseDatesStillClassifyAsNotStarted`, `treatsStaleNotStartedAsOverdueOnceThePlannedStartHasPassed` |
+| "Confirmações obrigatórias" (Etapa 2) | a transição cuja ação automática apaga uma data registrada só é aplicada com `confirm: true` no corpo do `PATCH /api/v1/projects/{id}/status` ou no argumento da mutation `transitionProject`: Em andamento → A iniciar apaga o início realizado; Concluído → Em andamento ou Atrasado apaga o término realizado. A confirmação só é pedida quando a transição passaria; se a tabela bloqueia, o bloqueio vem primeiro. Na UI, o quadro abre um diálogo com a mensagem do servidor | `ProjectStatusTransitionTest.line04*`, `line11*`, `line12*`; `ProjectServiceTest.clearsRecordedActualStartOnlyWithExplicitConfirmation`; `KanbanBoard.test.tsx` |
+| Erro de regra de negócio × erro de entrada | entrada malformada ou fora do formato: 400 (`VALIDATION_ERROR`, `INVALID_REQUEST`); dado bem formado que viola regra do domínio: 422 (`BUSINESS_RULE_VIOLATION`, `TRANSITION_BLOCKED`, `CONFIRMATION_REQUIRED`) | `RestExceptionHandlerTest` |
 | % de tempo restante | arredondado para o inteiro mais próximo; 100% antes do início previsto | `ProjectScheduleCalculatorTest.capsRemainingPercentageAtOneHundredBeforePlannedStart` |
 
 ## Como rodar (Docker)
@@ -160,13 +162,29 @@ pnpm test          # Vitest + Testing Library
 pnpm build
 ```
 
-Coleção de API ([`docs/api/facilit-kanban.postman_collection.json`](docs/api/facilit-kanban.postman_collection.json), importável no Postman e no Insomnia): percorre autenticação com CSRF, cadastros, transição legítima e bloqueada, filtros, indicadores, GraphQL, erros 401/400/409 e limpeza. Com o backend no ar, informe `adminEmail` e `adminPassword` num ambiente e execute as pastas na ordem. Os mesmos 21 cenários rodam por `curl` no gate de entrega (`docs/evidence/F3-L4/VERIFICACAO-USUARIO.md`).
+Coleção de API ([`docs/api/facilit-kanban.postman_collection.json`](docs/api/facilit-kanban.postman_collection.json), importável no Postman e no Insomnia): percorre autenticação com CSRF, cadastros, transição legítima, bloqueada (422 `TRANSITION_BLOCKED`) e com confirmação obrigatória (422 `CONFIRMATION_REQUIRED` e depois `confirm: true`), filtros, indicadores, GraphQL, erros 401/400/409 e limpeza. Com o backend no ar, informe `adminEmail` e `adminPassword` num ambiente e execute as pastas na ordem. Os cenários de erro e de confirmação também rodam por `curl` no gate do F5-L2 (`docs/evidence/F5-L2/VERIFICACAO-USUARIO.md`).
 
 ## API: Swagger, GraphQL e erros
 
 - OpenAPI com exemplos e schemas em `/api-docs`; Swagger UI em `/swagger-ui.html`.
 - GraphQL (`backend/src/main/resources/graphql/*.graphqls`) espelha o REST: consultas de projetos com os mesmos filtros, indicadores, CRUD e transição.
-- Erros REST em `ProblemDetail` com `code` estável: `VALIDATION_ERROR` e `INVALID_REQUEST` (400), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `RESOURCE_NOT_FOUND` (404), `CONFLICT` (409) e `INTERNAL_ERROR` (500, com `incidentId` e sem detalhe interno). No GraphQL, o mesmo código vai em `extensions.code`.
+- Erros REST em `ProblemDetail` (`application/problem+json`) com `code` estável e mensagem em pt-BR:
+
+  | HTTP | `code` | Quando |
+  |---|---|---|
+  | 400 | `VALIDATION_ERROR` | Bean Validation (campos em `violations`) |
+  | 400 | `INVALID_REQUEST` | parâmetro ou corpo malformado, paginação ou período inválido |
+  | 401 | `UNAUTHORIZED` | sem sessão ou login inválido |
+  | 403 | `FORBIDDEN` | sem permissão ou sem token CSRF |
+  | 404 | `RESOURCE_NOT_FOUND` | recurso inexistente |
+  | 409 | `CONFLICT` | e-mail já cadastrado, registro em uso, corrida com restrição do banco ou atualização concorrente |
+  | 422 | `BUSINESS_RULE_VIOLATION` | regra de domínio (ordem das datas, data realizada futura, término previsto obrigatório) |
+  | 422 | `TRANSITION_BLOCKED` | transição recusada pela tabela, com orientação e `currentStatus`/`requestedStatus` |
+  | 422 | `CONFIRMATION_REQUIRED` | transição que apaga data registrada sem `confirm: true`, com `clearedField` |
+  | 500 | `INTERNAL_ERROR` | erro inesperado, com `incidentId` e sem detalhe interno |
+
+  No GraphQL, o mesmo código vai em `extensions.code`. O Swagger documenta os erros de cada operação com exemplos (`ApiErrorDocumentation`, verificado por `OpenApiContractIT`).
+- Logs de negócio (`evento=projeto.criado|atualizado|transicao|transicao.recusada|excluido`, `responsavel.*`, `secretaria.*`, `credencial.*`, `projeto.status.recalculado`) em formato `chave=valor`, só com ids, status e perfil do ator, sem nome nem e-mail.
 - Paginação por `page`/`size` em todas as listagens.
 
 ## Segurança
@@ -233,7 +251,7 @@ O uso de IA no desenvolvimento está descrito em [`AI_USAGE.md`](AI_USAGE.md). A
 - Bundle do frontend acima de 500 kB (aviso não bloqueante do Vite); divisão de código é o próximo passo.
 - Execução dos testes de integração depende de Docker disponível (Testcontainers).
 - O recálculo diário grava status e métricas com a data do cálculo; com várias instâncias, cada uma pode repetir a verificação no mesmo dia, sem efeito (é idempotente).
-- Plano de conformidade em andamento (`docs/governance/PLANO-CONFORMIDADE-F5.md`): contrato de erro com códigos de negócio, confirmações obrigatórias, erros no Swagger, logs de negócio e testes de controller com mocks estão nos lotes F5-L2 e F5-L3.
+- Plano de conformidade em andamento (`docs/governance/PLANO-CONFORMIDADE-F5.md`): testes de controller com mocks, transação por caso de uso, `@Version` e a tabela de transição testada pela API estão no lote F5-L3.
 
 ## Governança e histórico de entrega
 
@@ -259,7 +277,8 @@ Estado dos lotes:
 - F3-L4 — Engenharia de entrega: GREEN em 2026-09-23 (gate local, histórico por lote, migração para o GitHub e primeiro pipeline verde).
 - F3 — Diferenciais: GREEN em 2026-09-23.
 - F4 — Freeze e release `v1.0.0`: evidências em `docs/evidence/F4/` (auditoria requisito → implementação → teste → evidência, revisão de segurança, saída do gate de freeze).
-- F5-L1 — Regras sempre corretas (status de hoje, fuso, datas realizadas): CANDIDATE em 2026-09-24, aguardando gate local.
+- F5-L1 — Regras sempre corretas (status de hoje, fuso, datas realizadas): GREEN em 2026-09-24.
+- F5-L2 — Contrato de erro, confirmações, Swagger e logs: CANDIDATE em 2026-09-24, aguardando gate local.
 
 ### Resumo por lote
 
@@ -328,3 +347,12 @@ O F5-L1 corrige o principal desvio da v1.0.0 em relação ao desafio: status, di
 - "hoje" passa a ser a data no fuso `America/Sao_Paulo` (`APP_TIME_ZONE`);
 - datas realizadas posteriores a hoje são recusadas;
 - decisões registradas no [ADR 0002](docs/adr/0002-status-sempre-atual.md) e em `docs/evidence/F5-L1/`.
+
+### F5-L2 — Contrato de erro, confirmações, Swagger e logs
+
+- regras de negócio passam a responder 422 com código próprio (`BUSINESS_RULE_VIOLATION`, `TRANSITION_BLOCKED`, `CONFIRMATION_REQUIRED`); corrida com restrição do banco e atualização concorrente passam a 409 `CONFLICT` em vez de 500;
+- mensagens da API em pt-BR, com orientação específica em cada linha bloqueável da tabela de transição; Bean Validation em pt-BR (`spring.web.locale=pt_BR`);
+- confirmação obrigatória (`confirm: true`) nas transições que apagam data registrada, em REST, GraphQL e na UI (diálogo com a mensagem do servidor);
+- erros documentados em todas as operações do Swagger, com exemplos (`ApiErrorDocumentation`);
+- logs de negócio sem dados pessoais;
+- coleção Postman atualizada (422 e confirmação).
