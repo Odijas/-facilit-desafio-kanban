@@ -17,6 +17,7 @@ API Java para gestão de projetos em quadro Kanban, feita para o Desafio Técnic
 - [Uso de IA](#uso-de-ia)
 - [Limitações e próximos passos](#limitações-e-próximos-passos)
 - [Governança e histórico de entrega](#governança-e-histórico-de-entrega)
+- [Changelog](CHANGELOG.md)
 
 ## Visão geral
 
@@ -267,7 +268,7 @@ O uso de IA no desenvolvimento está descrito em [`AI_USAGE.md`](AI_USAGE.md). A
 - Execução dos testes de integração depende de Docker disponível (Testcontainers).
 - O recálculo diário grava status e métricas com a data do cálculo; com várias instâncias, cada uma pode repetir a verificação no mesmo dia, sem efeito (é idempotente).
 - Concorrência: o `@Version` protege contra duas gravações simultâneas. A API não recebe a versão do cliente, então não detecta que alguém editou o projeto entre a leitura na tela e o envio; nesse caso, a última gravação vale.
-- Plano de conformidade em andamento (`docs/governance/PLANO-CONFORMIDADE-F5.md`): F5-L1 a F5-L4 estão concluídos; resta o F5-L5 de release e entrega.
+- Plano de conformidade F5 (`docs/governance/PLANO-CONFORMIDADE-F5.md`): F5-L1 a F5-L4 estão concluídos; o F5-L5 prepara a release `v2.0.0`, executa o freeze completo e fecha a entrega.
 
 ## Governança e histórico de entrega
 
@@ -297,6 +298,7 @@ Estado dos lotes:
 - F5-L2 — Contrato de erro, confirmações, Swagger e logs: GREEN em 2026-09-24.
 - F5-L3 — Camadas de teste completas e transação por caso de uso: GREEN em 2026-09-24.
 - F5-L4 — Etapa 3, BDD e cobertura: GREEN em 2026-09-24.
+- F5-L5 — Release `v2.0.0`: roteiro, auditoria e gates em `docs/evidence/F5/`; a tag só é criada após o freeze GREEN.
 
 ### Resumo por lote
 
