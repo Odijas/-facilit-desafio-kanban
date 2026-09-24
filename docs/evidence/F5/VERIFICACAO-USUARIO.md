@@ -10,7 +10,7 @@ Este gate prova a entrega na branch `release/2.0.0`, sem feature nova. Ele adapt
 - revisão de segurança executável;
 - pipeline verde do commit da release.
 
-Antes de rodar, siga os passos 1 a 3 de `RELEASE.md`: branch `release/2.0.0`, pacote aplicado, commits e push nos dois remotos.
+Antes de rodar, siga os passos 1 a 3 de `RELEASE.md`: branch `release/2.0.0`, pacote aplicado, commits e push obrigatório no GitHub (`origin`). O GitLab é espelho secundário e não bloqueia o freeze quando estiver indisponível.
 
 **Isolamento do banco:**
 
@@ -28,7 +28,7 @@ Execução, guardando a saída para a evidência:
 ```sh
 cd ~/proj/facilit-desafio-kanban
 awk 'BEGIN{f=0} /^```bash$/{f=1;next} /^```$/{if(f){exit}} f{print}' docs/evidence/F5/VERIFICACAO-USUARIO.md > /tmp/f5-gate.sh
-bash /tmp/f5-gate.sh 2>&1 | tee /tmp/saida-gate-f5.txt
+bash -o pipefail -c 'bash /tmp/f5-gate.sh 2>&1 | tee /tmp/saida-gate-f5.txt'
 ```
 
 ## Gate
@@ -61,10 +61,8 @@ BRANCH="$(git branch --show-current)"
 test "$BRANCH" = 'release/2.0.0' || fail "branch atual: $BRANCH (esperado release/2.0.0)"
 if [ -n "$(git status --porcelain=v1)" ]; then git status --short >&2; fail 'área de trabalho com alterações sem commit'; fi
 HEAD_SHA="$(git rev-parse HEAD)"
-for remote in origin gitlab; do
-  test "$(git ls-remote "$remote" "refs/heads/$BRANCH" | cut -f1)" = "$HEAD_SHA" \
-    || fail "release/2.0.0 local difere da publicada em $remote (faça git push $remote release/2.0.0)"
-done
+test "$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)" = "$HEAD_SHA" \
+  || fail "release/2.0.0 local difere da publicada no GitHub (faça git push origin release/2.0.0)"
 GITHUB_REPO="$(git remote get-url origin | sed -E 's#^(git@github\.com:|https://github\.com/)##; s#\.git$##')"
 echo "   HEAD $HEAD_SHA · GitHub $GITHUB_REPO"
 python3 - <<'PY'
@@ -587,6 +585,7 @@ VERIFY
 
 STATUS=$?
 echo "Resultado: exit code $STATUS"
+exit "$STATUS"
 ```
 
 GREEN exige todos os marcadores `F5_*_GREEN`, `=== F5-L5 GREEN ===` e `Resultado: exit code 0`.

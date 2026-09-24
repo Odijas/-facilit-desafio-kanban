@@ -7,13 +7,13 @@ O que ele confere:
 1. A `main` é o merge da `release/2.0.0` e contém a release inteira.
 2. A tag `v2.0.0` é anotada e aponta para a `main`.
 3. A `develop` contém a `release/2.0.0` (merge de volta do Gitflow).
-4. GitHub e GitLab têm as mesmas branches e tags.
+4. O GitHub publica `main`, `develop`, `release/2.0.0` e `v2.0.0`.
 5. O CI da `main` está verde nos três jobs.
 6. A página inicial do repositório mostra o README da release.
 
 ```sh
-awk 'BEGIN{f=0} /^```bash$/{f=1;next} /^```$/{if(f){exit}} f{print}' docs/evidence/F5/VERIFICACAO-RELEASE.md > /tmp/f4-release-gate.sh
-bash /tmp/f4-release-gate.sh
+awk 'BEGIN{f=0} /^```bash$/{f=1;next} /^```$/{if(f){exit}} f{print}' docs/evidence/F5/VERIFICACAO-RELEASE.md > /tmp/f5-release-gate.sh
+bash /tmp/f5-release-gate.sh
 ```
 
 ## Gate
@@ -40,14 +40,15 @@ git merge-base --is-ancestor "$RELEASE_SHA" develop || fail 'develop não conté
 echo "   main $MAIN_SHA = v2.0.0; release/2.0.0 $RELEASE_SHA"
 echo 'F5_RELEASE_REFS_GREEN'
 
-echo '=== GITHUB = GITLAB ==='
-git ls-remote --heads --tags gitlab | sort >/tmp/f5r-gitlab.txt
+echo '=== GITHUB PÚBLICO ==='
 git ls-remote --heads --tags origin | sort >/tmp/f5r-github.txt
-diff -u /tmp/f5r-gitlab.txt /tmp/f5r-github.txt || fail 'remotos divergentes'
+grep -q "refs/heads/main$" /tmp/f5r-github.txt || fail 'main ausente no GitHub'
+grep -q "refs/heads/develop$" /tmp/f5r-github.txt || fail 'develop ausente no GitHub'
+grep -q "refs/heads/release/2.0.0$" /tmp/f5r-github.txt || fail 'release/2.0.0 ausente no GitHub'
 grep -q "refs/tags/v2.0.0$" /tmp/f5r-github.txt || fail 'tag v2.0.0 ausente no GitHub'
-echo "   refs iguais nos dois remotos: $(wc -l </tmp/f5r-github.txt)"
-rm -f /tmp/f5r-*.txt
-echo 'F5_RELEASE_REMOTES_GREEN'
+echo "   GitHub publicado: $(wc -l </tmp/f5r-github.txt) refs listadas"
+rm -f /tmp/f5r-github.txt
+echo 'F5_RELEASE_GITHUB_GREEN'
 
 echo '=== CI DA MAIN ==='
 STATE=""
@@ -90,6 +91,7 @@ VERIFY
 
 STATUS=$?
 echo "Resultado: exit code $STATUS"
+exit "$STATUS"
 ```
 
-GREEN exige `F5_RELEASE_REFS_GREEN`, `F5_RELEASE_REMOTES_GREEN`, `F5_RELEASE_CI_GREEN`, `F5_RELEASE_PAGE_GREEN`, `=== F5 RELEASE GREEN ===` e `Resultado: exit code 0`.
+GREEN exige `F5_RELEASE_REFS_GREEN`, `F5_RELEASE_GITHUB_GREEN`, `F5_RELEASE_CI_GREEN`, `F5_RELEASE_PAGE_GREEN`, `=== F5 RELEASE GREEN ===` e `Resultado: exit code 0`.

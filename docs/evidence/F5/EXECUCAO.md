@@ -22,3 +22,11 @@ Data: 2026-09-24
 [VERIFICADO · 2026-09-24] o plano F5 determina `2.0.0`, `CHANGELOG.md`, auditoria final, freeze completo e Gitflow de release.
 
 [DESCONHECIDO] O freeze da branch `release/2.0.0`, o CI dessa branch, os merges em `main`/`develop`, a tag `v2.0.0` e o CI final da `main` só serão conhecidos após execução dos gates deste diretório. Nenhum deles é declarado GREEN antecipadamente.
+
+## Correção do gate de remotos e status
+
+[EXECUTADO PELO USUÁRIO · 2026-09-24] `release/2.0.0` foi publicada no GitHub; o push ao GitLab encerrou com `Connection to gitlab.com closed by remote host` / `unexpected disconnect`.
+
+[EXECUTADO PELO USUÁRIO · 2026-09-24] o freeze parou na pré-condição do GitLab e imprimiu `Resultado: exit code 1`, mas o shell externo mostrou `GATE_EXIT=0`; o wrapper terminava no `echo` e não propagava o status do `bash` interno.
+
+[VERIFICADO · 2026-09-24] o gate foi corrigido para exigir publicação no GitHub (`origin`), tratar GitLab como espelho secundário não bloqueante e executar `exit "$STATUS"` após registrar o resultado.

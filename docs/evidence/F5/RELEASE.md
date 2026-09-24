@@ -8,7 +8,6 @@ A release parte do último `develop` GREEN (`17aebc8`). Até o merge na `main`, 
 cd ~/proj/facilit-desafio-kanban
 git switch develop
 git pull --ff-only origin develop
-test "$(git rev-parse HEAD)" = "$(git rev-parse gitlab/develop)"
 test -z "$(git status --porcelain=v1)"
 git switch -c release/2.0.0
 ```
@@ -35,17 +34,16 @@ git commit -m "docs(F5): prepara auditoria e freeze da release 2.0.0"
 
 git status --short
 git push -u origin release/2.0.0
-git push gitlab release/2.0.0
 ```
 
-O push dispara o CI da branch de release.
+O push para o GitHub dispara o CI da branch de release.
 
 ## 4. Gate de freeze
 
 ```sh
 awk 'BEGIN{f=0} /^```bash$/{f=1;next} /^```$/{if(f){exit}} f{print}' docs/evidence/F5/VERIFICACAO-USUARIO.md > /tmp/f5-gate.sh
 bash -n /tmp/f5-gate.sh
-bash /tmp/f5-gate.sh 2>&1 | tee /tmp/saida-gate-f5.txt
+bash -o pipefail -c 'bash /tmp/f5-gate.sh 2>&1 | tee /tmp/saida-gate-f5.txt'
 ```
 
 Só prossiga com `=== F5-L5 GREEN ===` e `Resultado: exit code 0`.
@@ -67,7 +65,6 @@ grep -Fqx 'Resultado: exit code 0' docs/evidence/F5/SAIDA-GATE.txt
 git add docs/evidence/F5/SAIDA-GATE.txt
 git commit -m "docs(F5): registra saída do gate de freeze"
 git push origin release/2.0.0
-git push gitlab release/2.0.0
 ```
 
 ## 6. Fechar Gitflow: `main`, tag e back-merge
@@ -82,7 +79,6 @@ git switch develop
 git merge --no-ff release/2.0.0 -m "Merge branch 'release/2.0.0' into develop"
 
 git push origin main develop release/2.0.0 v2.0.0
-git push gitlab main develop release/2.0.0 v2.0.0
 ```
 
 ## 7. Verificação pública da release
@@ -90,7 +86,7 @@ git push gitlab main develop release/2.0.0 v2.0.0
 ```sh
 awk 'BEGIN{f=0} /^```bash$/{f=1;next} /^```$/{if(f){exit}} f{print}' docs/evidence/F5/VERIFICACAO-RELEASE.md > /tmp/f5-release-gate.sh
 bash -n /tmp/f5-release-gate.sh
-bash /tmp/f5-release-gate.sh 2>&1 | tee /tmp/saida-release-f5.txt
+bash -o pipefail -c 'bash /tmp/f5-release-gate.sh 2>&1 | tee /tmp/saida-release-f5.txt'
 ```
 
 Só encerre com `=== F5 RELEASE GREEN ===` e `Resultado: exit code 0`.
@@ -114,11 +110,19 @@ grep -Fqx 'Resultado: exit code 0' docs/evidence/F5/SAIDA-RELEASE.txt
 git add docs/evidence/F5/SAIDA-RELEASE.txt
 git commit -m "docs(F5): registra verificação final da release 2.0.0"
 git push origin develop
-git push gitlab develop
+```
+
+## 9. Espelho GitLab (opcional, não bloqueante)
+
+O GitLab não participa dos gates da entrega. Quando o serviço estiver disponível, sincronize-o com push normal, sem reescrever histórico:
+
+```sh
+git push gitlab main develop release/2.0.0 v2.0.0
 ```
 
 ## Falha
 
 - Freeze RED: corrigir somente a causa no próprio `release/2.0.0`, reexecutar o gate e não tocar na `main`.
-- Push remoto com erro transitório: não reescrever histórico; confirmar refs com `git ls-remote` e repetir o push normal.
+- Push do GitHub com erro: não prossiga; confirme refs com `git ls-remote origin` e repita o push normal.
+- Push do GitLab com erro transitório: registrar a indisponibilidade e seguir; ele é espelho secundário e pode ser sincronizado depois, sem `--force`.
 - Nunca usar `--force` no fechamento da release.

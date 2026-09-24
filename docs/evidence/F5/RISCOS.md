@@ -9,3 +9,6 @@ Data: 2026-09-24
 - `[VERIFICADO]` o gate de freeze usa projeto Compose isolado e remove somente os volumes dele; o projeto padrão é parado sem `-v`.
 - `[VERIFICADO]` o gate reexecuta `mvn clean verify`, portanto o limite JaCoCo de 95% continua bloqueante na release.
 - `[VERIFICADO]` riscos residuais de segurança já declarados no F4 não são silenciosamente tratados como resolvidos; o freeze repete os checks executáveis de autenticação, cookies, CSRF, exposição de Actuator e segredos.
+
+- `[EXECUTADO PELO USUÁRIO · 2026-09-24]` o GitLab apresentou desconexão remota durante o push da release; como o desafio exige repositório público no GitHub, o espelho GitLab não bloqueia o freeze nem a publicação.
+- `[VERIFICADO · 2026-09-24]` o wrapper anterior do gate mascarava exit code RED porque terminava após `echo`; os gates F5 agora propagam explicitamente o status com `exit "$STATUS"`.
