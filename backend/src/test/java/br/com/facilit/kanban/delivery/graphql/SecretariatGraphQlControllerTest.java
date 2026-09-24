@@ -3,6 +3,7 @@ package br.com.facilit.kanban.delivery.graphql;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import br.com.facilit.kanban.application.common.Actor;
@@ -63,6 +64,29 @@ class SecretariatGraphQlControllerTest {
         graphQlTester.document("{ secretariats { content { name } totalPages } }")
                 .execute()
                 .path("secretariats.content[0].name").entity(String.class).isEqualTo("Secretaria Digital");
+    }
+
+    @Test
+    void updatesAndDeletesSecretariat() {
+        when(service.update(SECRETARIAT_ID, new SaveSecretariatCommand("Secretaria Digital"), ADMIN))
+                .thenReturn(DIGITAL);
+
+        graphQlTester.document("""
+                        mutation($id: ID!) {
+                          updateSecretariat(id: $id, input: {name: "Secretaria Digital"}) { id name }
+                        }
+                        """)
+                .variable("id", SECRETARIAT_ID.toString())
+                .execute()
+                .path("updateSecretariat.id").entity(String.class).isEqualTo(SECRETARIAT_ID.toString());
+
+        graphQlTester.document("mutation($id: ID!) { deleteSecretariat(id: $id) }")
+                .variable("id", SECRETARIAT_ID.toString())
+                .execute()
+                .path("deleteSecretariat").entity(Boolean.class).isEqualTo(true);
+
+        verify(service).update(SECRETARIAT_ID, new SaveSecretariatCommand("Secretaria Digital"), ADMIN);
+        verify(service).delete(SECRETARIAT_ID, ADMIN);
     }
 
     @Test

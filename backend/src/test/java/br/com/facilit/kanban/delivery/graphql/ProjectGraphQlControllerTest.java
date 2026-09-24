@@ -9,7 +9,10 @@ import static org.mockito.Mockito.when;
 import br.com.facilit.kanban.application.common.Actor;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
+import br.com.facilit.kanban.application.project.ProjectDeadlineIndicator;
+import br.com.facilit.kanban.application.project.ProjectDeadlineIndicators;
 import br.com.facilit.kanban.application.project.ProjectFilter;
+import br.com.facilit.kanban.application.project.ProjectGroupIndicator;
 import br.com.facilit.kanban.application.project.ProjectService;
 import br.com.facilit.kanban.application.project.SaveProjectCommand;
 import br.com.facilit.kanban.domain.common.AuditMetadata;
@@ -98,6 +101,103 @@ class ProjectGraphQlControllerTest {
         verify(service).search(filter.capture(), eq(new PageQuery(0, 10)));
         assertThat(filter.getValue()).isEqualTo(new ProjectFilter(
                 ProjectStatus.OVERDUE, null, null, LocalDate.of(2026, 9, 1), null, "portal"));
+    }
+
+    @Test
+    void readsIndicatorsBySecretariatAndResponsible() {
+        UUID secretariatId = UUID.fromString("10000000-0000-4000-8000-000000000001");
+        when(service.indicatorsBySecretariat())
+                .thenReturn(List.of(new ProjectGroupIndicator(secretariatId, 2, 2.5)));
+        when(service.indicatorsByResponsible())
+                .thenReturn(List.of(new ProjectGroupIndicator(RESPONSIBLE_ID, 1, 0)));
+
+        graphQlTester.document("""
+                        query {
+                          projectIndicatorsBySecretariat { id projectCount averageDelayDays }
+                          projectIndicatorsByResponsible { id projectCount averageDelayDays }
+                        }
+                        """)
+                .execute()
+                .path("projectIndicatorsBySecretariat[0].id").entity(String.class)
+                .isEqualTo(secretariatId.toString())
+                .path("projectIndicatorsBySecretariat[0].averageDelayDays").entity(Double.class).isEqualTo(2.5)
+                .path("projectIndicatorsByResponsible[0].id").entity(String.class)
+                .isEqualTo(RESPONSIBLE_ID.toString());
+    }
+
+    @Test
+    void readsDeadlineIndicatorsWithDefaultWindow() {
+        LocalDate today = LocalDate.of(2026, 9, 24);
+        when(service.deadlines(7)).thenReturn(new ProjectDeadlineIndicators(
+                7,
+                today,
+                today.plusDays(7),
+                List.of(new ProjectDeadlineIndicator(
+                        PROJECT_ID,
+                        "Portal",
+                        ProjectStatus.IN_PROGRESS,
+                        today.plusDays(3),
+                        3))));
+
+        graphQlTester.document("""
+                        query {
+                          projectDeadlines {
+                            withinDays
+                            from
+                            to
+                            projects { projectId projectName status plannedEnd daysUntilDeadline }
+                          }
+                        }
+                        """)
+                .execute()
+                .path("projectDeadlines.withinDays").entity(Integer.class).isEqualTo(7)
+                .path("projectDeadlines.projects[0].projectId").entity(String.class).isEqualTo(PROJECT_ID.toString())
+                .path("projectDeadlines.projects[0].daysUntilDeadline").entity(Integer.class).isEqualTo(3);
+
+        verify(service).deadlines(7);
+    }
+
+    @Test
+    void mapsInvalidDeadlineWindowToInvalidRequest() {
+        when(service.deadlines(91)).thenThrow(new IllegalArgumentException("withinDays deve estar entre 1 e 90."));
+
+        graphQlTester.document("query { projectDeadlines(withinDays: 91) { withinDays } }")
+                .execute()
+                .errors()
+                .satisfy(errors -> assertThat(errors.get(0).getExtensions())
+                        .containsEntry("code", "INVALID_REQUEST"));
+    }
+
+    @Test
+    void createsUpdatesAndDeletesProject() {
+        when(service.create(any(), eq(ADMIN))).thenReturn(project(ProjectStatus.NOT_STARTED));
+        when(service.update(eq(PROJECT_ID), any(), eq(ADMIN))).thenReturn(project(ProjectStatus.NOT_STARTED));
+
+        Map<String, Object> input = Map.of(
+                "name", "Portal",
+                "responsibleIds", List.of(RESPONSIBLE_ID.toString()),
+                "plannedStart", "2026-09-20",
+                "plannedEnd", "2026-09-30");
+
+        graphQlTester.document("mutation($input: ProjectInput!) { createProject(input: $input) { id } }")
+                .variable("input", input)
+                .execute()
+                .path("createProject.id").entity(String.class).isEqualTo(PROJECT_ID.toString());
+
+        graphQlTester.document("""
+                        mutation($id: ID!, $input: ProjectInput!) { updateProject(id: $id, input: $input) { id } }
+                        """)
+                .variable("id", PROJECT_ID.toString())
+                .variable("input", input)
+                .execute()
+                .path("updateProject.id").entity(String.class).isEqualTo(PROJECT_ID.toString());
+
+        graphQlTester.document("mutation($id: ID!) { deleteProject(id: $id) }")
+                .variable("id", PROJECT_ID.toString())
+                .execute()
+                .path("deleteProject").entity(Boolean.class).isEqualTo(true);
+
+        verify(service).delete(PROJECT_ID, ADMIN);
     }
 
     @Test

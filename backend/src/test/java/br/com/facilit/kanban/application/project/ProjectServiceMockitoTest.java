@@ -3,6 +3,7 @@ package br.com.facilit.kanban.application.project;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
@@ -138,6 +139,31 @@ class ProjectServiceMockitoTest {
         order.verify(transactions).execute(any());
         order.verify(responsibleRepository).allExist(Set.of(RESPONSIBLE_ID));
         order.verify(projectRepository).save(any(), eq(TODAY));
+    }
+
+    @Test
+    void deadlinesRejectsWindowOutsideOneToNinetyDaysBeforeReadingRepositories() {
+        assertThatThrownBy(() -> service.deadlines(0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("withinDays deve estar entre 1 e 90.");
+
+        verify(projectRepository, never()).findStaleSchedules(any(), anyInt());
+        verify(projectRepository, never()).deadlines(any(), any());
+    }
+
+    @Test
+    void deadlinesRefreshesSchedulesAndUsesTheBusinessDateWindow() {
+        when(projectRepository.findStaleSchedules(TODAY, ProjectScheduleRefresher.BATCH_SIZE)).thenReturn(List.of());
+        when(projectRepository.deadlines(TODAY, TODAY.plusDays(7))).thenReturn(List.of());
+
+        ProjectDeadlineIndicators result = service.deadlines(7);
+
+        InOrder order = inOrder(projectRepository);
+        order.verify(projectRepository).findStaleSchedules(TODAY, ProjectScheduleRefresher.BATCH_SIZE);
+        order.verify(projectRepository).deadlines(TODAY, TODAY.plusDays(7));
+        assertThat(result.withinDays()).isEqualTo(7);
+        assertThat(result.from()).isEqualTo(TODAY);
+        assertThat(result.to()).isEqualTo(TODAY.plusDays(7));
     }
 
     @Test
