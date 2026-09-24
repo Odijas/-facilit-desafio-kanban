@@ -66,7 +66,7 @@ class SecretariatServiceTest {
 
         assertThatThrownBy(() -> service.delete(secretariat.id(), Actor.admin()))
                 .isInstanceOf(ConflictException.class)
-                .hasMessage("Secretariat is assigned to at least one responsible");
+                .hasMessage("A secretaria tem responsáveis vinculados e não pode ser excluída.");
     }
 
     @Test

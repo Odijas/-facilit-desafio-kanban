@@ -91,14 +91,14 @@ public class SecurityConfiguration {
                                         objectMapper,
                                         HttpStatus.UNAUTHORIZED,
                                         ApiErrorCode.UNAUTHORIZED,
-                                        "Authentication required"))
+                                        "Autenticação obrigatória."))
                         .accessDeniedHandler((request, response, exception) ->
                                 writeProblem(
                                         response,
                                         objectMapper,
                                         HttpStatus.FORBIDDEN,
                                         ApiErrorCode.FORBIDDEN,
-                                        "Access denied")))
+                                        "Acesso negado.")))
                 .logout(logout -> logout
                         .logoutUrl("/api/v1/auth/logout")
                         .invalidateHttpSession(true)

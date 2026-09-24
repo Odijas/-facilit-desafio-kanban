@@ -31,14 +31,14 @@ public record Responsible(
                 || separator == normalized.length() - 1
                 || normalized.chars().anyMatch(Character::isWhitespace);
         if (invalid) {
-            throw new IllegalArgumentException("email is invalid");
+            throw new IllegalArgumentException("E-mail inválido.");
         }
         return normalized;
     }
 
     private static void requireText(String value, String field) {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(field + " is required");
+            throw new IllegalArgumentException("Campo obrigatório: " + field);
         }
     }
 }
