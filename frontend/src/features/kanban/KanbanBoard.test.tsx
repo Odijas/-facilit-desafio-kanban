@@ -28,15 +28,18 @@ import { KanbanBoard } from "./KanbanBoard";
 vi.mock("../../api/kanban", () => {
   class MockKanbanApiError extends Error {
     readonly status: number;
+    readonly code: string | null;
 
-    constructor(message: string, status: number) {
+    constructor(message: string, status: number, code: string | null = null) {
       super(message);
       this.name = "KanbanApiError";
       this.status = status;
+      this.code = code;
     }
   }
 
   return {
+    CONFIRMATION_REQUIRED: "CONFIRMATION_REQUIRED",
     KanbanApiError: MockKanbanApiError,
     listProjects: vi.fn(),
     listResponsibles: vi.fn(),
@@ -202,13 +205,107 @@ describe("KanbanBoard", () => {
       expect(mockedTransitionProject).toHaveBeenCalledWith(
         project.id,
         "IN_PROGRESS",
+        false,
       );
     });
   });
 
+  it("asks for confirmation before clearing a recorded date and resends with confirm", async () => {
+    const started: Project = {
+      ...project,
+      status: "IN_PROGRESS",
+      actualStart: "2026-09-22",
+    };
+    const confirmationMessage =
+      "Confirme Em andamento → A iniciar: o início realizado (2026-09-22) será apagado. Reenvie com confirm = true.";
+    mockedListProjects.mockResolvedValue([started]);
+    mockedTransitionProject
+      .mockRejectedValueOnce(
+        new KanbanApiError(confirmationMessage, 422, "CONFIRMATION_REQUIRED"),
+      )
+      .mockResolvedValueOnce({
+        ...started,
+        status: "NOT_STARTED",
+        actualStart: null,
+      });
+    renderBoard();
+    const transfer = createDataTransfer();
+    const card = await screen.findByRole("article", {
+      name: "Projeto Portal cidadão",
+    });
+
+    fireEvent.dragStart(card, { dataTransfer: transfer });
+    fireEvent.drop(screen.getByRole("region", { name: "Coluna A iniciar" }), {
+      dataTransfer: transfer,
+    });
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Mover “Portal cidadão” para A iniciar?",
+    });
+    expect(within(dialog).getByText(confirmationMessage)).toBeInTheDocument();
+    expect(mockedTransitionProject).toHaveBeenCalledWith(
+      started.id,
+      "NOT_STARTED",
+      false,
+    );
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Confirmar" }),
+    );
+
+    await waitFor(() => {
+      expect(mockedTransitionProject).toHaveBeenLastCalledWith(
+        started.id,
+        "NOT_STARTED",
+        true,
+      );
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
+
+  it("does not resend the transition when the confirmation is cancelled", async () => {
+    mockedListProjects.mockResolvedValue([
+      { ...project, status: "COMPLETED", actualEnd: "2026-09-22" },
+    ]);
+    mockedTransitionProject.mockRejectedValueOnce(
+      new KanbanApiError(
+        "Confirme Concluído → Em andamento: o término realizado (2026-09-22) será apagado. Reenvie com confirm = true.",
+        422,
+        "CONFIRMATION_REQUIRED",
+      ),
+    );
+    renderBoard();
+    const transfer = createDataTransfer();
+    const card = await screen.findByRole("article", {
+      name: "Projeto Portal cidadão",
+    });
+
+    fireEvent.dragStart(card, { dataTransfer: transfer });
+    fireEvent.drop(
+      screen.getByRole("region", { name: "Coluna Em andamento" }),
+      { dataTransfer: transfer },
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancelar" }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+    expect(mockedTransitionProject).toHaveBeenCalledTimes(1);
+  });
+
   it("shows the backend domain message when a transition is blocked", async () => {
     mockedTransitionProject.mockRejectedValue(
-      new KanbanApiError("Ajuste as datas previstas antes da transição", 400),
+      new KanbanApiError(
+        "Ajuste as datas previstas antes da transição",
+        422,
+        "TRANSITION_BLOCKED",
+      ),
     );
     renderBoard();
     const transfer = createDataTransfer();

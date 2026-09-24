@@ -15,6 +15,7 @@ import {
 import { useMemo, useState } from "react";
 import type { AuthUser } from "../../api/auth";
 import {
+  CONFIRMATION_REQUIRED,
   createProject,
   createResponsible,
   deleteProject,
@@ -31,6 +32,10 @@ import {
   updateProject,
 } from "../../api/kanban";
 import { canManageProject, isAdministrator } from "../auth/permissions";
+import {
+  ConfirmTransitionDialog,
+  type PendingTransitionConfirmation,
+} from "./ConfirmTransitionDialog";
 import { DeleteProjectDialog } from "./DeleteProjectDialog";
 import { KanbanColumn } from "./KanbanColumn";
 import { ProjectDialog } from "./ProjectDialog";
@@ -61,7 +66,14 @@ type UpdateProjectVariables = {
 type TransitionProjectVariables = {
   projectId: string;
   status: ProjectStatus;
+  confirm: boolean;
 };
+
+function columnLabel(status: ProjectStatus): string {
+  return (
+    KANBAN_COLUMNS.find((column) => column.status === status)?.label ?? status
+  );
+}
 
 function operationErrorMessage(error: unknown): string {
   return error instanceof KanbanApiError
@@ -82,6 +94,8 @@ export function KanbanBoard({ user }: KanbanBoardProps) {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<Project | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
+  const [pendingConfirmation, setPendingConfirmation] =
+    useState<PendingTransitionConfirmation | null>(null);
 
   const projectsQuery = useQuery({
     queryKey: [...PROJECTS_QUERY_KEY, filters],
@@ -138,11 +152,34 @@ export function KanbanBoard({ user }: KanbanBoardProps) {
   });
 
   const transitionMutation = useMutation({
-    mutationFn: ({ projectId, status }: TransitionProjectVariables) =>
-      transitionProject(projectId, status),
+    mutationFn: ({ projectId, status, confirm }: TransitionProjectVariables) =>
+      transitionProject(projectId, status, confirm),
     onMutate: () => setOperationError(null),
-    onSuccess: refreshProjects,
-    onError: (error) => setOperationError(operationErrorMessage(error)),
+    onSuccess: async () => {
+      setPendingConfirmation(null);
+      await refreshProjects();
+    },
+    onError: (error, variables) => {
+      if (
+        error instanceof KanbanApiError &&
+        error.code === CONFIRMATION_REQUIRED &&
+        !variables.confirm
+      ) {
+        const project = projectsQuery.data?.find(
+          (item) => item.id === variables.projectId,
+        );
+        setPendingConfirmation({
+          projectId: variables.projectId,
+          projectName: project?.name ?? "projeto",
+          targetLabel: columnLabel(variables.status),
+          status: variables.status,
+          message: error.message,
+        });
+        return;
+      }
+      setPendingConfirmation(null);
+      setOperationError(operationErrorMessage(error));
+    },
   });
 
   const deleteMutation = useMutation({
@@ -291,7 +328,11 @@ export function KanbanBoard({ user }: KanbanBoardProps) {
             onDropProject={(projectId, status) => {
               const project = projects.find((item) => item.id === projectId);
               if (project !== undefined && project.status !== status) {
-                transitionMutation.mutate({ projectId: project.id, status });
+                transitionMutation.mutate({
+                  projectId: project.id,
+                  status,
+                  confirm: false,
+                });
               }
             }}
           />
@@ -329,6 +370,19 @@ export function KanbanBoard({ user }: KanbanBoardProps) {
           setOperationError(null);
         }}
         onSubmit={(input) => responsibleMutation.mutate(input)}
+      />
+
+      <ConfirmTransitionDialog
+        confirmation={pendingConfirmation}
+        pending={transitionMutation.isPending}
+        onCancel={() => setPendingConfirmation(null)}
+        onConfirm={(confirmation) =>
+          transitionMutation.mutate({
+            projectId: confirmation.projectId,
+            status: confirmation.status,
+            confirm: true,
+          })
+        }
       />
 
       <DeleteProjectDialog
