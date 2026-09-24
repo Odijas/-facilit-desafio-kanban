@@ -55,7 +55,7 @@ flowchart LR
     SEC --> DEL --> APP --> DOM
     INF -. implementa portas .-> APP
   end
-  DB[("PostgreSQL 18.6<br/>Flyway V1–V5")]
+  DB[("PostgreSQL 18.6<br/>Flyway V1–V6")]
   PROM["Prometheus"] --> GRAF["Grafana"]
   UI -- "/api (proxy Vite)" --> SEC
   EXT --> SEC
@@ -64,7 +64,8 @@ flowchart LR
 ```
 
 - **Clean Architecture pragmática.** O domínio não conhece Spring, banco nem HTTP; a aplicação expõe casos de uso e portas, montados em `ApplicationBeans` (composition root). REST e GraphQL chamam os mesmos serviços, sem regra duplicada; controllers e resolvers ficam finos.
-- **Regra de negócio determinística no domínio.** Status, dias de atraso e % de tempo restante são calculados por `ProjectScheduleCalculator` a partir da data de hoje obtida de um `Clock` UTC injetado no `ProjectService`; as transições aplicam só os efeitos da tabela do desafio e recalculam o status, bloqueando quando o resultado difere do pedido.
+- **Regra de negócio determinística no domínio.** Status, dias de atraso e % de tempo restante são calculados por `ProjectScheduleCalculator` a partir da data de hoje obtida de um `Clock` no fuso de negócio (`APP_TIME_ZONE`, padrão `America/Sao_Paulo`) injetado no `ProjectService`; as transições partem do status de hoje, aplicam só os efeitos da tabela do desafio e recalculam o status, bloqueando quando o resultado difere do pedido.
+- **Status sempre atual.** Os valores calculados ficam gravados, com a data do cálculo, para listar e filtrar por índice. Quando o dia muda, os projetos não concluídos são recalculados antes de qualquer leitura e também por agendamento à meia-noite ([ADR 0002](docs/adr/0002-status-sempre-atual.md)).
 - **Persistência.** PostgreSQL com Flyway (schema versionado e `ddl-auto: validate`), índices alinhados às consultas paginadas e filtros via JPA `Specification`.
 - **Contrato de erro estável.** `ProblemDetail` (RFC 9457) com `code` fixo no REST e `extensions.code` no GraphQL.
 - **Segurança por padrão.** Sessão HTTP com CSRF para SPA, senhas bcrypt, sem credencial padrão versionada, autorização de posse na camada de aplicação.
@@ -74,10 +75,26 @@ As decisões de cada lote, com fonte e marcação de verificação, estão em `d
 
 ## Regras de negócio
 
-- **Status**: A iniciar (sem início e término realizados), Em andamento (início realizado, término previsto futuro, sem término realizado), Atrasado (início previsto vencido sem início realizado, ou término previsto vencido sem término realizado) e Concluído (término realizado preenchido). Editar datas recalcula o status.
+- **Status**: A iniciar (sem início e término realizados), Em andamento (início realizado, término previsto maior ou igual a hoje, sem término realizado; ver [interpretações](#interpretações-do-enunciado)), Atrasado (início previsto vencido sem início realizado, ou término previsto vencido sem término realizado) e Concluído (término realizado preenchido). Editar datas recalcula o status.
+- **Status de hoje**: status, dias de atraso e % de tempo restante valem para a data de hoje, mesmo sem edição do projeto. Quando o dia muda, os projetos não concluídos são recalculados antes de qualquer leitura (projeto, quadro, filtros, indicadores e transição); `updatedAt` continua registrando só edições feitas pelo usuário.
 - **Transições**: seguem a tabela do desafio linha a linha (efeito automático, recálculo e bloqueio com mensagem quando o status final diverge do solicitado). Erros de transição respondem 400 `INVALID_REQUEST` com a orientação do desafio.
 - **Métricas**: dias de atraso e % de tempo restante conforme as fórmulas do desafio, com os casos de zero previstos (sem datas, concluído, prazo vencido).
 - **Responsável**: e-mail único (sem diferenciar maiúsculas); não pode ser removido enquanto estiver em projeto (409). **Secretaria**: não pode ser removida enquanto tiver responsável (409).
+
+### Interpretações do enunciado
+
+Pontos que o documento do desafio não define, com a escolha feita e onde ela é testada:
+
+| Situação | Escolha | Teste |
+|---|---|---|
+| "Hoje" | data no fuso de negócio `America/Sao_Paulo` (`APP_TIME_ZONE`), não a data UTC | `ProjectScheduleRefresherTest.usesTheBusinessTimeZoneToDecideWhatTodayIs` |
+| Início realizado preenchido e término previsto **igual** a hoje | Em andamento: é o último dia do prazo, que ainda não venceu. O enunciado exige término previsto > hoje para Em andamento e < hoje para Atrasado; o dia exato fica sem regra | `ProjectScheduleCalculatorTest.keepsProjectInProgressOnItsPlannedEndDate` |
+| Mais de uma definição vale ao mesmo tempo | prioridade Concluído > Atrasado > Em andamento > A iniciar (por exemplo, início previsto vencido sem início realizado é Atrasado) | `ProjectScheduleCalculatorTest.classifiesProjectWithActualEndAsCompleted`, `classifiesMissedPlannedStartAsOverdue` |
+| Início realizado preenchido sem término previsto | recusado: sem término previsto não há como classificar Em andamento nem Atrasado | `ProjectScheduleCalculatorTest.rejectsStartedProjectWithoutPlannedEndWhenItCannotBeClassified` |
+| Início ou término realizado depois de hoje | recusado: data realizada registra fato já ocorrido | `ProjectDatesTest`, `ProjectServiceTest.rejectsActualDatesAfterTodayOnCreateAndUpdate` |
+| Status gravado em outro dia | a transição parte do status de hoje; o valor gravado é recalculado antes da leitura | `ProjectStatusTransitionTest.doesNotLetStaleInProgressBypassTheInProgressToOverdueBlock`, `ProjectScheduleRefresherTest`, `ScheduleFreshnessIT` |
+| Linha "A iniciar → Atrasado" | com o status de hoje, nunca resulta em sucesso: se o início previsto já passou, o projeto já está Atrasado; se não passou, a tabela manda bloquear | `ProjectStatusTransitionTest.blocksNotStartedToOverdueBeforePlannedStart`, `blocksNotStartedToOverdueOnPlannedStartBecauseDatesStillClassifyAsNotStarted`, `treatsStaleNotStartedAsOverdueOnceThePlannedStartHasPassed` |
+| % de tempo restante | arredondado para o inteiro mais próximo; 100% antes do início previsto | `ProjectScheduleCalculatorTest.capsRemainingPercentageAtOneHundredBeforePlannedStart` |
 
 ## Como rodar (Docker)
 
@@ -185,7 +202,7 @@ backend/                     API Spring Boot (Maven)
     application/             casos de uso, portas e erros de aplicação (Actor, Conflict, NotFound, Forbidden)
     infrastructure/          JPA, segurança (sessão, CSRF, Actuator), configuração
     delivery/                REST, GraphQL e autenticação
-  src/main/resources/        application.yml, db/migration (Flyway V1–V5), graphql/*.graphqls
+  src/main/resources/        application.yml, db/migration (Flyway V1–V6), graphql/*.graphqls
   src/test/java/             unitários (domínio, serviços, controllers) e integração (*IT, Testcontainers)
 frontend/                    React 19 + MUI + TanStack Query (Vite)
   src/api/                   cliente HTTP e contratos, independente do React Query
@@ -215,10 +232,12 @@ O uso de IA no desenvolvimento está descrito em [`AI_USAGE.md`](AI_USAGE.md). A
 - Observabilidade sem tracing distribuído e sem regras de alerta.
 - Bundle do frontend acima de 500 kB (aviso não bloqueante do Vite); divisão de código é o próximo passo.
 - Execução dos testes de integração depende de Docker disponível (Testcontainers).
+- O recálculo diário grava status e métricas com a data do cálculo; com várias instâncias, cada uma pode repetir a verificação no mesmo dia, sem efeito (é idempotente).
+- Plano de conformidade em andamento (`docs/governance/PLANO-CONFORMIDADE-F5.md`): contrato de erro com códigos de negócio, confirmações obrigatórias, erros no Swagger, logs de negócio e testes de controller com mocks estão nos lotes F5-L2 e F5-L3.
 
 ## Governança e histórico de entrega
 
-Governança em `docs/governance`: `PROMPT-EXECUTIVO-BASE-v1.1.md`, `PROMPT-EXECUTIVO-KANBAN-v1.0.md` e `REPLANEJAMENTO-F3.md`. Cada lote gera o Pacote Anti-Alucinação (livro-razão, fontes, decisões, consumidores, matriz requisito → implementação → teste → evidência, riscos e gate) em `docs/evidence/<LOTE>/`.
+Governança em `docs/governance`: `PROMPT-EXECUTIVO-BASE-v1.1.md`, `PROMPT-EXECUTIVO-KANBAN-v1.0.md`, `REPLANEJAMENTO-F3.md` e `PLANO-CONFORMIDADE-F5.md`. Cada lote gera o Pacote Anti-Alucinação (livro-razão, fontes, decisões, consumidores, matriz requisito → implementação → teste → evidência, riscos e gate) em `docs/evidence/<LOTE>/`.
 
 Estado dos lotes:
 
@@ -240,6 +259,7 @@ Estado dos lotes:
 - F3-L4 — Engenharia de entrega: GREEN em 2026-09-23 (gate local, histórico por lote, migração para o GitHub e primeiro pipeline verde).
 - F3 — Diferenciais: GREEN em 2026-09-23.
 - F4 — Freeze e release `v1.0.0`: evidências em `docs/evidence/F4/` (auditoria requisito → implementação → teste → evidência, revisão de segurança, saída do gate de freeze).
+- F5-L1 — Regras sempre corretas (status de hoje, fuso, datas realizadas): CANDIDATE em 2026-09-24, aguardando gate local.
 
 ### Resumo por lote
 
@@ -297,3 +317,14 @@ O F3-L3 adiciona observabilidade ao backend sem alterar regras de negócio:
 - métricas com a tag `application="facilit-kanban"` e histograma de `http.server.requests` (latência p95), JVM e pool HikariCP;
 - logs estruturados em JSON no formato ECS (`@timestamp`, `log.level`, `message`, `ecs.version`) no Docker Compose; a execução local via Maven mantém o log legível;
 - `compose.observability.yaml` adiciona Prometheus v3.14.0 e Grafana 13.1.3, ligados só em `127.0.0.1`, com datasource e painel provisionados em `observability/`. A senha de métricas chega ao Prometheus como secret do Compose; nenhuma senha tem valor padrão.
+
+### F5-L1 — Regras sempre corretas
+
+O F5-L1 corrige o principal desvio da v1.0.0 em relação ao desafio: status, dias de atraso e % de tempo restante eram calculados só ao gravar e ficavam congelados com a passagem dos dias.
+
+- migration V6 com `schedule_calculated_on` (data do último cálculo), preenchida com a data UTC da última gravação nos projetos existentes;
+- `ProjectScheduleRefresher` recalcula, em lotes de 500, os projetos não concluídos calculados antes de hoje; roda antes de toda leitura e na subida, e por agendamento à meia-noite (`APP_SCHEDULE_REFRESH_CRON`);
+- a transição parte do status de hoje, e não do gravado (um projeto gravado como Em andamento e já vencido não passa mais por Em andamento → Atrasado);
+- "hoje" passa a ser a data no fuso `America/Sao_Paulo` (`APP_TIME_ZONE`);
+- datas realizadas posteriores a hoje são recusadas;
+- decisões registradas no [ADR 0002](docs/adr/0002-status-sempre-atual.md) e em `docs/evidence/F5-L1/`.
