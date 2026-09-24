@@ -1,6 +1,7 @@
 package br.com.facilit.kanban.application.responsible;
 
 import br.com.facilit.kanban.application.common.Actor;
+import br.com.facilit.kanban.application.common.BusinessLog;
 import br.com.facilit.kanban.application.common.ConflictException;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
@@ -50,13 +51,15 @@ public final class ResponsibleService {
 
         validateSecretariat(responsible.secretariatId());
         ensureEmailAvailable(responsible.email(), null);
-        return responsibleRepository.save(responsible);
+        Responsible saved = responsibleRepository.save(responsible);
+        BusinessLog.info("responsavel.criado", "id=" + saved.id() + " ator=" + actor.auditLabel());
+        return saved;
     }
 
     public Responsible get(UUID id) {
         Objects.requireNonNull(id, "id is required");
         return responsibleRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Responsible not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Responsável não encontrado: " + id));
     }
 
     public PageResult<Responsible> list(PageQuery pageQuery) {
@@ -80,7 +83,9 @@ public final class ResponsibleService {
         validateSecretariat(updated.secretariatId());
         ensureEmailAvailable(updated.email(), updated.id());
         ensureLoginEmailAvailable(updated);
-        return responsibleRepository.save(updated);
+        Responsible saved = responsibleRepository.save(updated);
+        BusinessLog.info("responsavel.atualizado", "id=" + saved.id() + " ator=" + actor.auditLabel());
+        return saved;
     }
 
     public void delete(UUID id, Actor actor) {
@@ -88,14 +93,15 @@ public final class ResponsibleService {
         actor.requireAdmin();
         Responsible responsible = get(id);
         if (projectRepository.existsByResponsibleId(responsible.id())) {
-            throw new ConflictException("Responsible is assigned to at least one project");
+            throw new ConflictException("O responsável está vinculado a ao menos um projeto e não pode ser excluído.");
         }
         responsibleRepository.deleteById(responsible.id());
+        BusinessLog.info("responsavel.excluido", "id=" + responsible.id() + " ator=" + actor.auditLabel());
     }
 
     private void validateSecretariat(UUID secretariatId) {
         if (secretariatId != null && !secretariatRepository.existsById(secretariatId)) {
-            throw new ResourceNotFoundException("Secretariat not found: " + secretariatId);
+            throw new ResourceNotFoundException("Secretaria não encontrada: " + secretariatId);
         }
     }
 
@@ -111,7 +117,7 @@ public final class ResponsibleService {
                 ? responsibleRepository.existsByEmail(email)
                 : responsibleRepository.existsByEmailExcludingId(email, currentId);
         if (exists) {
-            throw new ConflictException("Responsible email already exists");
+            throw new ConflictException("Já existe responsável com este e-mail.");
         }
     }
 }

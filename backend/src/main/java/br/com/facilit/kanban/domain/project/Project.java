@@ -22,7 +22,7 @@ public record Project(
         Objects.requireNonNull(audit, "audit is required");
 
         if (responsibleIds.isEmpty()) {
-            throw new IllegalArgumentException("responsibleIds must contain at least one responsible");
+            throw new IllegalArgumentException("Informe ao menos um responsável (responsibleIds).");
         }
 
         responsibleIds = Set.copyOf(responsibleIds);
@@ -42,7 +42,7 @@ public record Project(
 
     private static void requireText(String value, String field) {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(field + " is required");
+            throw new IllegalArgumentException("Campo obrigatório: " + field);
         }
     }
 }

@@ -25,7 +25,7 @@ public class AuthenticatedActorResolver {
     @Transactional(readOnly = true)
     public Actor resolve(Principal principal) {
         if (!(principal instanceof Authentication authentication) || !authentication.isAuthenticated()) {
-            throw new ForbiddenOperationException("Authentication required");
+            throw new ForbiddenOperationException("Autenticação obrigatória.");
         }
         Set<String> authorities = authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
@@ -38,8 +38,8 @@ public class AuthenticatedActorResolver {
                     .map(SecurityUserJpaEntity::getResponsibleId)
                     .map(Actor::responsible)
                     .orElseThrow(() -> new ForbiddenOperationException(
-                            "Authenticated user is not linked to a responsible"));
+                            "O usuário autenticado não está vinculado a um responsável."));
         }
-        throw new ForbiddenOperationException("Authenticated user has no supported role");
+        throw new ForbiddenOperationException("O usuário autenticado não tem perfil suportado.");
     }
 }

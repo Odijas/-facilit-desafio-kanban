@@ -1,5 +1,6 @@
 package br.com.facilit.kanban.domain.project;
 
+import br.com.facilit.kanban.domain.common.BusinessRuleException;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
@@ -33,8 +34,9 @@ public final class ProjectScheduleCalculator {
 
         if (dates.actualStart() != null) {
             if (dates.plannedEnd() == null) {
-                throw new IllegalArgumentException(
-                        "plannedEnd is required when actualStart is filled and actualEnd is empty");
+                throw new BusinessRuleException(
+                        "Informe o término previsto (plannedEnd): projeto com início realizado e sem término "
+                                + "realizado precisa dele para ser classificado como Em andamento ou Atrasado.");
             }
             return ProjectStatus.IN_PROGRESS;
         }
