@@ -85,7 +85,7 @@ public class ResponsibleRestController {
                                 {
                                   "title": "CONFLICT",
                                   "status": 409,
-                                  "detail": "Já existe responsável com este e-mail.",
+                                  "detail": "Responsible email already exists",
                                   "code": "CONFLICT"
                                 }
                                 """)))

@@ -1,6 +1,5 @@
 package br.com.facilit.kanban.application.project;
 
-import br.com.facilit.kanban.application.common.BusinessLog;
 import br.com.facilit.kanban.domain.project.ProjectScheduleCalculator;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
@@ -72,9 +71,6 @@ final class ProjectScheduleRefresher {
             int updated = updates.isEmpty() ? 0 : repository.updateSchedules(updates, today);
             refreshed += updated;
             if (stale.size() < BATCH_SIZE || updated == 0) {
-                if (refreshed > 0) {
-                    BusinessLog.info("projeto.status.recalculado", "projetos=" + refreshed + " hoje=" + today);
-                }
                 return refreshed;
             }
         }

@@ -1,14 +1,12 @@
 package br.com.facilit.kanban.application.project;
 
 import br.com.facilit.kanban.application.common.Actor;
-import br.com.facilit.kanban.application.common.BusinessLog;
 import br.com.facilit.kanban.application.common.ForbiddenOperationException;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
 import br.com.facilit.kanban.application.responsible.ResponsibleRepository;
 import br.com.facilit.kanban.domain.common.AuditMetadata;
-import br.com.facilit.kanban.domain.common.BusinessRuleException;
 import br.com.facilit.kanban.domain.project.Project;
 import br.com.facilit.kanban.domain.project.ProjectDates;
 import br.com.facilit.kanban.domain.project.ProjectScheduleCalculator;
@@ -73,17 +71,14 @@ public final class ProjectService {
                 dates,
                 schedule,
                 new AuditMetadata(now, now));
-        Project saved = projectRepository.save(project, today);
-        BusinessLog.info("projeto.criado", "id=" + saved.id() + " status=" + saved.status()
-                + " ator=" + actor.auditLabel());
-        return saved;
+        return projectRepository.save(project, today);
     }
 
     public Project get(UUID id) {
         Objects.requireNonNull(id, "id is required");
         refreshSchedules();
         return projectRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Projeto não encontrado: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + id));
     }
 
     public PageResult<Project> list(PageQuery pageQuery) {
@@ -130,32 +125,19 @@ public final class ProjectService {
                 dates,
                 schedule,
                 new AuditMetadata(current.audit().createdAt(), clock.instant()));
-        Project saved = projectRepository.save(updated, today);
-        BusinessLog.info("projeto.atualizado", "id=" + saved.id() + " status=" + saved.status()
-                + " ator=" + actor.auditLabel());
-        return saved;
+        return projectRepository.save(updated, today);
     }
 
-    /**
-     * Executa uma transição da tabela do desafio.
-     *
-     * @param confirmed confirmação explícita, exigida quando a ação automática apaga uma data registrada
-     */
-    public Project transition(UUID id, ProjectStatus requestedStatus, boolean confirmed, Actor actor) {
+    public Project transition(UUID id, ProjectStatus requestedStatus, Actor actor) {
         Objects.requireNonNull(requestedStatus, "requestedStatus is required");
         Objects.requireNonNull(actor, "actor is required");
         Project current = get(id);
         requireMembership(current.responsibleIds(), actor);
         LocalDate today = LocalDate.now(clock);
-        ProjectTransitionResult transition;
-        try {
-            transition = statusTransition.transition(current, requestedStatus, today, confirmed);
-        } catch (BusinessRuleException exception) {
-            BusinessLog.info("projeto.transicao.recusada", "id=" + current.id() + " de=" + current.status()
-                    + " para=" + requestedStatus + " motivo=" + exception.getClass().getSimpleName()
-                    + " ator=" + actor.auditLabel());
-            throw exception;
-        }
+        ProjectTransitionResult transition = statusTransition.transition(
+                current,
+                requestedStatus,
+                today);
         Project updated = new Project(
                 current.id(),
                 current.name(),
@@ -163,10 +145,7 @@ public final class ProjectService {
                 transition.dates(),
                 transition.schedule(),
                 new AuditMetadata(current.audit().createdAt(), clock.instant()));
-        Project saved = projectRepository.save(updated, today);
-        BusinessLog.info("projeto.transicao", "id=" + saved.id() + " de=" + current.status()
-                + " para=" + saved.status() + " confirmado=" + confirmed + " ator=" + actor.auditLabel());
-        return saved;
+        return projectRepository.save(updated, today);
     }
 
     public void delete(UUID id, Actor actor) {
@@ -174,22 +153,21 @@ public final class ProjectService {
         Project project = get(id);
         requireMembership(project.responsibleIds(), actor);
         projectRepository.deleteById(project.id());
-        BusinessLog.info("projeto.excluido", "id=" + project.id() + " ator=" + actor.auditLabel());
     }
 
     private static void requireMembership(Set<UUID> responsibleIds, Actor actor) {
         if (!actor.canManage(responsibleIds)) {
             throw new ForbiddenOperationException(
-                    "O responsável só pode alterar projetos em que é responsável.");
+                    "Responsible users can only manage projects they are assigned to");
         }
     }
 
     private void validateResponsibles(Set<UUID> responsibleIds) {
         if (responsibleIds.isEmpty()) {
-            throw new IllegalArgumentException("Informe ao menos um responsável (responsibleIds).");
+            throw new IllegalArgumentException("responsibleIds must contain at least one responsible");
         }
         if (!responsibleRepository.allExist(responsibleIds)) {
-            throw new ResourceNotFoundException("Ao menos um responsável informado não foi encontrado.");
+            throw new ResourceNotFoundException("At least one responsible was not found");
         }
     }
 

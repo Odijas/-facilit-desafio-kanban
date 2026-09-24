@@ -111,7 +111,7 @@ public class ProjectPersistenceAdapter implements ProjectRepository {
     public Project save(Project project, LocalDate scheduleCalculatedOn) {
         Set<ResponsibleJpaEntity> responsibles = Set.copyOf(responsibleRepository.findAllById(project.responsibleIds()));
         if (responsibles.size() != project.responsibleIds().size()) {
-            throw new ResourceNotFoundException("Ao menos um responsável informado não foi encontrado.");
+            throw new ResourceNotFoundException("At least one responsible was not found");
         }
 
         ProjectJpaEntity entity = repository.findById(project.id()).orElseGet(ProjectJpaEntity::new);

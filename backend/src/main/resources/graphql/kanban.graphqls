@@ -28,8 +28,7 @@ type Mutation {
   deleteSecretariat(id: ID!): Boolean!
   createProject(input: ProjectInput!): Project!
   updateProject(id: ID!, input: ProjectInput!): Project!
-  "Transição da tabela do desafio. confirm = true é exigido quando a ação apaga uma data já registrada."
-  transitionProject(id: ID!, status: ProjectStatus!, confirm: Boolean = false): Project!
+  transitionProject(id: ID!, status: ProjectStatus!): Project!
   deleteProject(id: ID!): Boolean!
 }
 

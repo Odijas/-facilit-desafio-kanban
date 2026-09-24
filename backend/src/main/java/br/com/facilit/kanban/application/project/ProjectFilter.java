@@ -14,7 +14,7 @@ public record ProjectFilter(
 
     public ProjectFilter {
         if (plannedFrom != null && plannedTo != null && plannedTo.isBefore(plannedFrom)) {
-            throw new IllegalArgumentException("Período inválido: plannedTo não pode ser anterior a plannedFrom.");
+            throw new IllegalArgumentException("plannedTo must not be before plannedFrom");
         }
         text = text == null || text.isBlank() ? null : text.trim();
     }

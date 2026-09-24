@@ -3,12 +3,6 @@ package br.com.facilit.kanban.domain.project;
 import java.time.LocalDate;
 import java.util.Objects;
 
-/**
- * Aplica a tabela de transição do desafio: ações automáticas, recálculo do status e bloqueio com orientação.
- *
- * <p>Transições cuja ação automática apaga uma data já registrada (Em andamento → A iniciar,
- * Concluído → Em andamento e Concluído → Atrasado) só são aplicadas com confirmação explícita.
- */
 public final class ProjectStatusTransition {
 
     private final ProjectScheduleCalculator scheduleCalculator;
@@ -20,8 +14,7 @@ public final class ProjectStatusTransition {
     public ProjectTransitionResult transition(
             Project project,
             ProjectStatus requestedStatus,
-            LocalDate today,
-            boolean confirmed) {
+            LocalDate today) {
         Objects.requireNonNull(project, "project is required");
         Objects.requireNonNull(requestedStatus, "requestedStatus is required");
         Objects.requireNonNull(today, "today is required");
@@ -29,10 +22,7 @@ public final class ProjectStatusTransition {
         // O status gravado pode ter sido calculado em outro dia; a origem da transição é sempre o status de hoje.
         ProjectStatus currentStatus = scheduleCalculator.calculate(project.dates(), today).status();
         if (currentStatus == requestedStatus) {
-            throw new TransitionBlockedException(
-                    currentStatus,
-                    requestedStatus,
-                    "O projeto já está em " + requestedStatus.label() + ".");
+            throw new IllegalArgumentException("Project is already in status " + requestedStatus);
         }
 
         validateBeforeTransition(currentStatus, requestedStatus, project.dates(), today);
@@ -44,13 +34,12 @@ public final class ProjectStatusTransition {
         ProjectScheduleMetrics recalculated = scheduleCalculator.calculate(transitionedDates, today);
 
         if (recalculated.status() != requestedStatus) {
-            throw new TransitionBlockedException(
+            throw new IllegalArgumentException(mismatchMessage(
                     currentStatus,
                     requestedStatus,
-                    mismatchMessage(currentStatus, requestedStatus, recalculated.status(), project.dates(), today));
+                    recalculated.status()));
         }
 
-        requireConfirmationWhenClearingRecordedDate(currentStatus, requestedStatus, project.dates(), confirmed);
         return new ProjectTransitionResult(transitionedDates, recalculated);
     }
 
@@ -63,11 +52,8 @@ public final class ProjectStatusTransition {
                 && requestedStatus == ProjectStatus.OVERDUE
                 && dates.plannedStart() != null
                 && today.isBefore(dates.plannedStart())) {
-            throw new TransitionBlockedException(
-                    currentStatus,
-                    requestedStatus,
-                    "A iniciar → Atrasado bloqueado: não é possível marcar Atrasado antes do início previsto ("
-                            + dates.plannedStart() + "). Hoje é " + today + ".");
+            throw new IllegalArgumentException(
+                    "Cannot transition NOT_STARTED to OVERDUE before plannedStart");
         }
     }
 
@@ -100,33 +86,6 @@ public final class ProjectStatusTransition {
         return dates;
     }
 
-    private static void requireConfirmationWhenClearingRecordedDate(
-            ProjectStatus currentStatus,
-            ProjectStatus requestedStatus,
-            ProjectDates dates,
-            boolean confirmed) {
-        if (confirmed) {
-            return;
-        }
-        if (currentStatus == ProjectStatus.IN_PROGRESS && requestedStatus == ProjectStatus.NOT_STARTED) {
-            throw new ConfirmationRequiredException(
-                    currentStatus,
-                    requestedStatus,
-                    "actualStart",
-                    "Confirme Em andamento → A iniciar: o início realizado (" + dates.actualStart()
-                            + ") será apagado. Reenvie com confirm = true.");
-        }
-        if (currentStatus == ProjectStatus.COMPLETED
-                && (requestedStatus == ProjectStatus.IN_PROGRESS || requestedStatus == ProjectStatus.OVERDUE)) {
-            throw new ConfirmationRequiredException(
-                    currentStatus,
-                    requestedStatus,
-                    "actualEnd",
-                    "Confirme Concluído → " + requestedStatus.label() + ": o término realizado ("
-                            + dates.actualEnd() + ") será apagado. Reenvie com confirm = true.");
-        }
-    }
-
     private static ProjectDates withActualStart(ProjectDates dates, LocalDate actualStart) {
         return new ProjectDates(
                 dates.plannedStart(),
@@ -146,57 +105,39 @@ public final class ProjectStatusTransition {
     private static String mismatchMessage(
             ProjectStatus currentStatus,
             ProjectStatus requestedStatus,
-            ProjectStatus recalculatedStatus,
-            ProjectDates dates,
-            LocalDate today) {
-        String transition = currentStatus.label() + " → " + requestedStatus.label() + " bloqueado: ";
+            ProjectStatus recalculatedStatus) {
         if (currentStatus == ProjectStatus.IN_PROGRESS
                 && requestedStatus == ProjectStatus.OVERDUE) {
-            return transition + "com as datas atuais o projeto não fica Atrasado. Remova o início realizado "
-                    + "(actualStart) para voltar a não iniciado, com atraso se cabível, ou ajuste o início ou o "
-                    + "término previsto (plannedStart/plannedEnd) para uma data anterior a hoje (" + today + ").";
-        }
-        if (currentStatus == ProjectStatus.NOT_STARTED
-                && requestedStatus == ProjectStatus.OVERDUE) {
-            return transition + "o projeto só fica Atrasado depois que o início previsto (" + dates.plannedStart()
-                    + ") passar sem início realizado, ou depois que o término previsto (" + dates.plannedEnd()
-                    + ") passar. Hoje é " + today + ".";
-        }
-        if (currentStatus == ProjectStatus.IN_PROGRESS
-                && requestedStatus == ProjectStatus.NOT_STARTED) {
-            return transition + "sem o início realizado, o projeto ficaria " + recalculatedStatus.label()
-                    + " porque o início previsto (" + dates.plannedStart() + ") já passou. Ajuste o início "
-                    + "previsto (plannedStart) para hoje (" + today + ") ou depois.";
+            return "Cannot transition IN_PROGRESS to OVERDUE: remove actualStart so overdue rules can apply, "
+                    + "or adjust planned dates so the project recalculates as OVERDUE";
         }
         if (currentStatus == ProjectStatus.OVERDUE
                 && requestedStatus == ProjectStatus.NOT_STARTED) {
-            return transition + "remova o início realizado (actualStart) e ajuste o início e o término "
-                    + "previstos (plannedStart/plannedEnd) para datas posteriores a hoje (" + today + ").";
+            return "Cannot transition OVERDUE to NOT_STARTED: remove actualStart and adjust planned dates "
+                    + "so the project is no longer overdue";
         }
         if (currentStatus == ProjectStatus.OVERDUE
                 && requestedStatus == ProjectStatus.IN_PROGRESS) {
-            return transition + "ajuste o início e o término previstos (plannedStart/plannedEnd) para datas "
-                    + "posteriores a hoje (" + today + "); o projeto também precisa de início realizado "
-                    + "(actualStart).";
+            return "Cannot transition OVERDUE to IN_PROGRESS: fill actualStart when needed and adjust plannedEnd "
+                    + "so it is not before today";
         }
         if (currentStatus == ProjectStatus.COMPLETED
                 && requestedStatus == ProjectStatus.NOT_STARTED) {
-            return transition + "remova o término realizado (actualEnd) e ajuste o início e o término "
-                    + "previstos (plannedStart/plannedEnd) para datas posteriores a hoje (" + today + ").";
+            return "Cannot transition COMPLETED to NOT_STARTED: remove actualEnd and adjust planned dates "
+                    + "so the project recalculates as NOT_STARTED";
         }
         if (currentStatus == ProjectStatus.COMPLETED
                 && requestedStatus == ProjectStatus.IN_PROGRESS) {
-            return transition + "sem o término realizado, o projeto ficaria " + recalculatedStatus.label()
-                    + ". Ajuste o término previsto (plannedEnd) para hoje (" + today + ") ou depois e mantenha "
-                    + "o início realizado (actualStart) preenchido.";
+            return "Cannot transition COMPLETED to IN_PROGRESS: after removing actualEnd the project must not be "
+                    + "overdue and actualStart must remain filled";
         }
         if (currentStatus == ProjectStatus.COMPLETED
                 && requestedStatus == ProjectStatus.OVERDUE) {
-            return transition + "sem o término realizado, o projeto ficaria " + recalculatedStatus.label()
-                    + ", e não Atrasado. Só é possível quando o início previsto (sem início realizado) ou o "
-                    + "término previsto já passou.";
+            return "Cannot transition COMPLETED to OVERDUE: after removing actualEnd the project must satisfy "
+                    + "the overdue date rules";
         }
-        return transition + "com as datas atuais, o projeto ficaria " + recalculatedStatus.label()
-                + ". Ajuste as datas do projeto e tente de novo.";
+        return "Requested status " + requestedStatus
+                + " does not match recalculated status " + recalculatedStatus
+                + "; adjust project dates before retrying";
     }
 }

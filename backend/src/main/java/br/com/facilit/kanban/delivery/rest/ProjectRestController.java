@@ -91,9 +91,9 @@ public class ProjectRestController {
                                 {
                                   "title": "VALIDATION_ERROR",
                                   "status": 400,
-                                  "detail": "Dados de entrada inválidos.",
+                                  "detail": "Request validation failed",
                                   "code": "VALIDATION_ERROR",
-                                  "violations": [{"field": "name", "message": "não deve estar em branco"}]
+                                  "violations": [{"field": "name", "message": "must not be blank"}]
                                 }
                                 """)))
     })
@@ -156,11 +156,7 @@ public class ProjectRestController {
             @PathVariable UUID id,
             @Valid @RequestBody ProjectStatusRequest request,
             Principal principal) {
-        return ProjectResponse.from(service.transition(
-                id,
-                request.status(),
-                request.confirmed(),
-                actorResolver.resolve(principal)));
+        return ProjectResponse.from(service.transition(id, request.status(), actorResolver.resolve(principal)));
     }
 
     @DeleteMapping("/{id}")

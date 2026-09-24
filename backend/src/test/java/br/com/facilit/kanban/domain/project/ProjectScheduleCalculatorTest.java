@@ -3,7 +3,6 @@ package br.com.facilit.kanban.domain.project;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import br.com.facilit.kanban.domain.common.BusinessRuleException;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 
@@ -99,25 +98,22 @@ class ProjectScheduleCalculatorTest {
         ProjectDates dates = dates(TODAY.minusDays(1), null, TODAY, null);
 
         assertThatThrownBy(() -> calculator.calculate(dates, TODAY))
-                .isInstanceOf(BusinessRuleException.class)
-                .hasMessage("Informe o término previsto (plannedEnd): projeto com início realizado e sem término "
-                        + "realizado precisa dele para ser classificado como Em andamento ou Atrasado.");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("plannedEnd is required when actualStart is filled and actualEnd is empty");
     }
 
     @Test
     void rejectsPlannedEndBeforePlannedStart() {
         assertThatThrownBy(() -> dates(TODAY, TODAY.minusDays(1), null, null))
-                .isInstanceOf(BusinessRuleException.class)
-                .hasMessageStartingWith("Término previsto (plannedEnd = ")
-                .hasMessageContaining("não pode ser anterior ao início previsto (plannedStart = ");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("plannedEnd must not be before plannedStart");
     }
 
     @Test
     void rejectsActualEndBeforeActualStart() {
         assertThatThrownBy(() -> dates(TODAY, TODAY.plusDays(10), TODAY, TODAY.minusDays(1)))
-                .isInstanceOf(BusinessRuleException.class)
-                .hasMessageStartingWith("Término realizado (actualEnd = ")
-                .hasMessageContaining("não pode ser anterior ao início realizado (actualStart = ");
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("actualEnd must not be before actualStart");
     }
 
     private static ProjectDates dates(

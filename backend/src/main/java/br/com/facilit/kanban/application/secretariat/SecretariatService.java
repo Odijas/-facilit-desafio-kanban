@@ -1,7 +1,6 @@
 package br.com.facilit.kanban.application.secretariat;
 
 import br.com.facilit.kanban.application.common.Actor;
-import br.com.facilit.kanban.application.common.BusinessLog;
 import br.com.facilit.kanban.application.common.ConflictException;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
@@ -38,15 +37,13 @@ public final class SecretariatService {
                 UUID.randomUUID(),
                 command.name(),
                 new AuditMetadata(now, now));
-        Secretariat saved = secretariatRepository.save(secretariat);
-        BusinessLog.info("secretaria.criada", "id=" + saved.id() + " ator=" + actor.auditLabel());
-        return saved;
+        return secretariatRepository.save(secretariat);
     }
 
     public Secretariat get(UUID id) {
         Objects.requireNonNull(id, "id is required");
         return secretariatRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Secretaria não encontrada: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Secretariat not found: " + id));
     }
 
     public PageResult<Secretariat> list(PageQuery pageQuery) {
@@ -63,9 +60,7 @@ public final class SecretariatService {
                 current.id(),
                 command.name(),
                 new AuditMetadata(current.audit().createdAt(), clock.instant()));
-        Secretariat saved = secretariatRepository.save(updated);
-        BusinessLog.info("secretaria.atualizada", "id=" + saved.id() + " ator=" + actor.auditLabel());
-        return saved;
+        return secretariatRepository.save(updated);
     }
 
     public void delete(UUID id, Actor actor) {
@@ -73,9 +68,8 @@ public final class SecretariatService {
         actor.requireAdmin();
         Secretariat current = get(id);
         if (responsibleRepository.existsBySecretariatId(current.id())) {
-            throw new ConflictException("A secretaria tem responsáveis vinculados e não pode ser excluída.");
+            throw new ConflictException("Secretariat is assigned to at least one responsible");
         }
         secretariatRepository.deleteById(current.id());
-        BusinessLog.info("secretaria.excluida", "id=" + current.id() + " ator=" + actor.auditLabel());
     }
 }

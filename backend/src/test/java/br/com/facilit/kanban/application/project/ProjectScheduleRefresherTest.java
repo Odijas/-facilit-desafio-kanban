@@ -12,7 +12,6 @@ import br.com.facilit.kanban.domain.common.AuditMetadata;
 import br.com.facilit.kanban.domain.project.Project;
 import br.com.facilit.kanban.domain.project.ProjectScheduleCalculator;
 import br.com.facilit.kanban.domain.project.ProjectStatus;
-import br.com.facilit.kanban.domain.project.TransitionBlockedException;
 import br.com.facilit.kanban.domain.responsible.Responsible;
 import java.time.Duration;
 import java.time.Instant;
@@ -153,10 +152,10 @@ class ProjectScheduleRefresherTest {
         clock.advance(Duration.ofDays(10));
 
         // Hoje o projeto está Atrasado: pedir Atrasado de novo é pedir o status atual.
-        assertThatThrownBy(() -> service.transition(created.id(), ProjectStatus.OVERDUE, false, Actor.admin()))
-                .isInstanceOf(TransitionBlockedException.class)
-                .hasMessage("O projeto já está em Atrasado.");
-        Project completed = service.transition(created.id(), ProjectStatus.COMPLETED, false, Actor.admin());
+        assertThatThrownBy(() -> service.transition(created.id(), ProjectStatus.OVERDUE, Actor.admin()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Project is already in status OVERDUE");
+        Project completed = service.transition(created.id(), ProjectStatus.COMPLETED, Actor.admin());
         assertThat(completed.dates().actualEnd()).isEqualTo(TODAY.plusDays(10));
     }
 
@@ -172,7 +171,7 @@ class ProjectScheduleRefresherTest {
 
         Project created = lateService.create(new SaveProjectCommand(
                 "Portal", Set.of(responsibleId), TODAY, TODAY.plusDays(10), null, null), Actor.admin());
-        Project started = lateService.transition(created.id(), ProjectStatus.IN_PROGRESS, false, Actor.admin());
+        Project started = lateService.transition(created.id(), ProjectStatus.IN_PROGRESS, Actor.admin());
 
         assertThat(started.dates().actualStart()).isEqualTo(TODAY);
     }

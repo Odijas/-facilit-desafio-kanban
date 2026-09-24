@@ -4,9 +4,6 @@ import br.com.facilit.kanban.application.common.ConflictException;
 import br.com.facilit.kanban.application.common.ForbiddenOperationException;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
 import br.com.facilit.kanban.delivery.common.ApiErrorCode;
-import br.com.facilit.kanban.domain.common.BusinessRuleException;
-import br.com.facilit.kanban.domain.project.ConfirmationRequiredException;
-import br.com.facilit.kanban.domain.project.TransitionBlockedException;
 import graphql.GraphQLError;
 import graphql.GraphqlErrorBuilder;
 import jakarta.validation.ConstraintViolationException;
@@ -15,10 +12,8 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.graphql.data.method.annotation.GraphQlExceptionHandler;
 import org.springframework.graphql.execution.ErrorType;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 
 @ControllerAdvice
@@ -45,71 +40,6 @@ public class GraphQlErrorHandler {
                 .errorType(ErrorType.BAD_REQUEST)
                 .message(exception.getMessage())
                 .extensions(code(ApiErrorCode.CONFLICT))
-                .build();
-    }
-
-    @GraphQlExceptionHandler
-    public GraphQLError handleDataIntegrity(
-            GraphqlErrorBuilder<?> errorBuilder,
-            DataIntegrityViolationException exception) {
-        LOGGER.warn("Conflito de integridade no banco: tipo={}", exception.getClass().getSimpleName());
-        return errorBuilder
-                .errorType(ErrorType.BAD_REQUEST)
-                .message("A operação conflita com dados já gravados (por exemplo, e-mail já cadastrado ou registro "
-                        + "em uso). Recarregue os dados e tente de novo.")
-                .extensions(code(ApiErrorCode.CONFLICT))
-                .build();
-    }
-
-    @GraphQlExceptionHandler
-    public GraphQLError handleOptimisticLock(
-            GraphqlErrorBuilder<?> errorBuilder,
-            ObjectOptimisticLockingFailureException exception) {
-        return errorBuilder
-                .errorType(ErrorType.BAD_REQUEST)
-                .message("O registro foi alterado por outra operação ao mesmo tempo. Recarregue os dados e tente "
-                        + "de novo.")
-                .extensions(code(ApiErrorCode.CONFLICT))
-                .build();
-    }
-
-    @GraphQlExceptionHandler
-    public GraphQLError handleTransitionBlocked(
-            GraphqlErrorBuilder<?> errorBuilder,
-            TransitionBlockedException exception) {
-        return errorBuilder
-                .errorType(ErrorType.BAD_REQUEST)
-                .message(exception.getMessage())
-                .extensions(Map.of(
-                        "code", ApiErrorCode.TRANSITION_BLOCKED.name(),
-                        "currentStatus", exception.currentStatus().name(),
-                        "requestedStatus", exception.requestedStatus().name()))
-                .build();
-    }
-
-    @GraphQlExceptionHandler
-    public GraphQLError handleConfirmationRequired(
-            GraphqlErrorBuilder<?> errorBuilder,
-            ConfirmationRequiredException exception) {
-        return errorBuilder
-                .errorType(ErrorType.BAD_REQUEST)
-                .message(exception.getMessage())
-                .extensions(Map.of(
-                        "code", ApiErrorCode.CONFIRMATION_REQUIRED.name(),
-                        "currentStatus", exception.currentStatus().name(),
-                        "requestedStatus", exception.requestedStatus().name(),
-                        "clearedField", exception.clearedField()))
-                .build();
-    }
-
-    @GraphQlExceptionHandler
-    public GraphQLError handleBusinessRule(
-            GraphqlErrorBuilder<?> errorBuilder,
-            BusinessRuleException exception) {
-        return errorBuilder
-                .errorType(ErrorType.BAD_REQUEST)
-                .message(exception.getMessage())
-                .extensions(code(ApiErrorCode.BUSINESS_RULE_VIOLATION))
                 .build();
     }
 
@@ -141,7 +71,7 @@ public class GraphQlErrorHandler {
             DateTimeParseException exception) {
         return errorBuilder
                 .errorType(ErrorType.BAD_REQUEST)
-                .message("Data inválida.")
+                .message("Invalid date value")
                 .extensions(code(ApiErrorCode.INVALID_REQUEST))
                 .build();
     }
@@ -152,7 +82,7 @@ public class GraphQlErrorHandler {
             ConstraintViolationException exception) {
         return errorBuilder
                 .errorType(ErrorType.BAD_REQUEST)
-                .message("Dados de entrada inválidos.")
+                .message("Request validation failed")
                 .extensions(code(ApiErrorCode.VALIDATION_ERROR))
                 .build();
     }
@@ -170,7 +100,7 @@ public class GraphQlErrorHandler {
                 origin);
         return errorBuilder
                 .errorType(ErrorType.INTERNAL_ERROR)
-                .message("Erro inesperado.")
+                .message("Unexpected error")
                 .extensions(Map.of("code", ApiErrorCode.INTERNAL_ERROR.name(), "incidentId", incidentId))
                 .build();
     }

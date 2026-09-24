@@ -97,12 +97,10 @@ public class ProjectGraphQlController {
     public ProjectGraphQlResponse transitionProject(
             @Argument String id,
             @Argument ProjectStatus status,
-            @Argument Boolean confirm,
             Principal principal) {
         return ProjectGraphQlResponse.from(service.transition(
                 UUID.fromString(id),
                 status,
-                Boolean.TRUE.equals(confirm),
                 actorResolver.resolve(principal)));
     }
 

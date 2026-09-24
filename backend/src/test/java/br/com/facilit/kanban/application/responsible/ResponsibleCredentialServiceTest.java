@@ -72,10 +72,10 @@ class ResponsibleCredentialServiceTest {
     void rejectsShortAndOversizedPasswords() {
         assertThatThrownBy(() -> service.setPassword(responsible.id(), "curta", Actor.admin()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("A senha deve ter ao menos 12 caracteres.");
+                .hasMessage("password must have at least 12 characters");
         assertThatThrownBy(() -> service.setPassword(responsible.id(), "\u00e7".repeat(37), Actor.admin()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("A senha deve ter no máximo 72 bytes.");
+                .hasMessage("password must have at most 72 bytes");
     }
 
     @Test
@@ -84,7 +84,7 @@ class ResponsibleCredentialServiceTest {
 
         assertThatThrownBy(() -> service.setPassword(responsible.id(), VALID_PASSWORD, Actor.admin()))
                 .isInstanceOf(ConflictException.class)
-                .hasMessage("Este e-mail já é usado por outro login.");
+                .hasMessage("Email is already used by another login");
     }
 
     @Test
@@ -93,9 +93,9 @@ class ResponsibleCredentialServiceTest {
 
         assertThatThrownBy(() -> service.setPassword(unknown, VALID_PASSWORD, Actor.admin()))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessage("Responsável não encontrado: " + unknown);
+                .hasMessage("Responsible not found: " + unknown);
         assertThatThrownBy(() -> service.revoke(responsible.id(), Actor.admin()))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessage("Credencial não encontrada para o responsável: " + responsible.id());
+                .hasMessage("Credentials not found for responsible: " + responsible.id());
     }
 }

@@ -4,20 +4,15 @@ import br.com.facilit.kanban.application.common.ConflictException;
 import br.com.facilit.kanban.application.common.ForbiddenOperationException;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
 import br.com.facilit.kanban.delivery.common.ApiErrorCode;
-import br.com.facilit.kanban.domain.common.BusinessRuleException;
-import br.com.facilit.kanban.domain.project.ConfirmationRequiredException;
-import br.com.facilit.kanban.domain.project.TransitionBlockedException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.ErrorResponse;
@@ -41,56 +36,6 @@ public class RestExceptionHandler {
         return problem(HttpStatus.CONFLICT, ApiErrorCode.CONFLICT, exception.getMessage());
     }
 
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    ProblemDetail handleDataIntegrity(DataIntegrityViolationException exception) {
-        // Corrida entre a checagem da aplicação e a restrição do banco (e-mail único, registro em uso).
-        LOGGER.warn("Conflito de integridade no banco: tipo={}", exception.getClass().getSimpleName());
-        return problem(
-                HttpStatus.CONFLICT,
-                ApiErrorCode.CONFLICT,
-                "A operação conflita com dados já gravados (por exemplo, e-mail já cadastrado ou registro em uso). "
-                        + "Recarregue os dados e tente de novo.");
-    }
-
-    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
-    ProblemDetail handleOptimisticLock(ObjectOptimisticLockingFailureException exception) {
-        return problem(
-                HttpStatus.CONFLICT,
-                ApiErrorCode.CONFLICT,
-                "O registro foi alterado por outra operação ao mesmo tempo. Recarregue os dados e tente de novo.");
-    }
-
-    @ExceptionHandler(TransitionBlockedException.class)
-    ProblemDetail handleTransitionBlocked(TransitionBlockedException exception) {
-        ProblemDetail detail = problem(
-                HttpStatus.UNPROCESSABLE_ENTITY,
-                ApiErrorCode.TRANSITION_BLOCKED,
-                exception.getMessage());
-        detail.setProperty("currentStatus", exception.currentStatus().name());
-        detail.setProperty("requestedStatus", exception.requestedStatus().name());
-        return detail;
-    }
-
-    @ExceptionHandler(ConfirmationRequiredException.class)
-    ProblemDetail handleConfirmationRequired(ConfirmationRequiredException exception) {
-        ProblemDetail detail = problem(
-                HttpStatus.UNPROCESSABLE_ENTITY,
-                ApiErrorCode.CONFIRMATION_REQUIRED,
-                exception.getMessage());
-        detail.setProperty("currentStatus", exception.currentStatus().name());
-        detail.setProperty("requestedStatus", exception.requestedStatus().name());
-        detail.setProperty("clearedField", exception.clearedField());
-        return detail;
-    }
-
-    @ExceptionHandler(BusinessRuleException.class)
-    ProblemDetail handleBusinessRule(BusinessRuleException exception) {
-        return problem(
-                HttpStatus.UNPROCESSABLE_ENTITY,
-                ApiErrorCode.BUSINESS_RULE_VIOLATION,
-                exception.getMessage());
-    }
-
     @ExceptionHandler(ForbiddenOperationException.class)
     ProblemDetail handleForbidden(ForbiddenOperationException exception) {
         return problem(HttpStatus.FORBIDDEN, ApiErrorCode.FORBIDDEN, exception.getMessage());
@@ -101,7 +46,7 @@ public class RestExceptionHandler {
         return problem(
                 HttpStatus.UNAUTHORIZED,
                 ApiErrorCode.UNAUTHORIZED,
-                "E-mail ou senha inválidos.");
+                "Invalid email or password");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -114,12 +59,12 @@ public class RestExceptionHandler {
         ProblemDetail detail = problem(
                 HttpStatus.BAD_REQUEST,
                 ApiErrorCode.VALIDATION_ERROR,
-                "Dados de entrada inválidos.");
+                "Request validation failed");
         List<ValidationViolation> violations = exception.getBindingResult().getFieldErrors().stream()
                 .sorted(Comparator.comparing(FieldError::getField))
                 .map(error -> new ValidationViolation(
                         error.getField(),
-                        error.getDefaultMessage() == null ? "valor inválido" : error.getDefaultMessage()))
+                        error.getDefaultMessage() == null ? "invalid value" : error.getDefaultMessage()))
                 .toList();
         detail.setProperty("violations", violations);
         return detail;
@@ -130,12 +75,12 @@ public class RestExceptionHandler {
         return problem(
                 HttpStatus.BAD_REQUEST,
                 ApiErrorCode.INVALID_REQUEST,
-                "Valor inválido para o parâmetro: " + exception.getName());
+                "Invalid value for parameter: " + exception.getName());
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ProblemDetail handleUnreadableBody(HttpMessageNotReadableException exception) {
-        return problem(HttpStatus.BAD_REQUEST, ApiErrorCode.INVALID_REQUEST, "Corpo da requisição malformado.");
+        return problem(HttpStatus.BAD_REQUEST, ApiErrorCode.INVALID_REQUEST, "Malformed request body");
     }
 
     @ExceptionHandler(Exception.class)
@@ -153,7 +98,7 @@ public class RestExceptionHandler {
         ProblemDetail detail = problem(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 ApiErrorCode.INTERNAL_ERROR,
-                "Erro inesperado.");
+                "Unexpected error");
         detail.setProperty("incidentId", incidentId);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(detail);
     }

@@ -133,7 +133,7 @@ class SecurityApiIT {
         assertThat(badLogin.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(badLogin.getBody()).isNotNull();
         assertThat(badLogin.getBody().path("code").asText()).isEqualTo("UNAUTHORIZED");
-        assertThat(badLogin.getBody().path("detail").asText()).isEqualTo("E-mail ou senha inválidos.");
+        assertThat(badLogin.getBody().path("detail").asText()).isEqualTo("Invalid email or password");
 
         AuthenticatedSession session = login("security-admin@example.invalid", "security-test-password", "ROLE_ADMIN");
         ResponseEntity<JsonNode> refreshedCsrf = csrf(session.sessionCookie());

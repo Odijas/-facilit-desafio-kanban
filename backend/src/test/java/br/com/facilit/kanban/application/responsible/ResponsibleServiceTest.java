@@ -78,7 +78,7 @@ class ResponsibleServiceTest {
 
         assertThatThrownBy(() -> service.create(command("ANA@EXAMPLE.COM", null), Actor.admin()))
                 .isInstanceOf(ConflictException.class)
-                .hasMessage("Já existe responsável com este e-mail.");
+                .hasMessage("Responsible email already exists");
     }
 
     @Test
@@ -87,7 +87,7 @@ class ResponsibleServiceTest {
 
         assertThatThrownBy(() -> service.create(command("ana@example.com", secretariatId), Actor.admin()))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessage("Secretaria não encontrada: " + secretariatId);
+                .hasMessage("Secretariat not found: " + secretariatId);
     }
 
     @Test
@@ -105,7 +105,7 @@ class ResponsibleServiceTest {
 
         assertThatThrownBy(() -> service.delete(responsible.id(), Actor.admin()))
                 .isInstanceOf(ConflictException.class)
-                .hasMessage("O responsável está vinculado a ao menos um projeto e não pode ser excluído.");
+                .hasMessage("Responsible is assigned to at least one project");
     }
 
     @Test
@@ -115,7 +115,7 @@ class ResponsibleServiceTest {
 
         assertThatThrownBy(() -> service.create(command("bruno@example.com", null), responsibleActor))
                 .isInstanceOf(ForbiddenOperationException.class)
-                .hasMessage("Apenas o administrador pode realizar esta operação.");
+                .hasMessage("Only administrators can perform this operation");
         assertThatThrownBy(() -> service.update(created.id(), command("outro@example.com", null), responsibleActor))
                 .isInstanceOf(ForbiddenOperationException.class);
         assertThatThrownBy(() -> service.delete(created.id(), responsibleActor))
@@ -131,7 +131,7 @@ class ResponsibleServiceTest {
 
         assertThatThrownBy(() -> service.update(created.id(), command("admin@example.com", null), Actor.admin()))
                 .isInstanceOf(ConflictException.class)
-                .hasMessage("Este e-mail já é usado por outro login.");
+                .hasMessage("Email is already used by another login");
         assertThat(service.update(created.id(), command("ana.silva@example.com", null), Actor.admin()).email())
                 .isEqualTo("ana.silva@example.com");
     }

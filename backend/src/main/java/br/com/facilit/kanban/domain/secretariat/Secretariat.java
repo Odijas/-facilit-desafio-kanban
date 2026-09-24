@@ -10,7 +10,7 @@ public record Secretariat(UUID id, String name, AuditMetadata audit) {
         Objects.requireNonNull(id, "id is required");
 
         if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("Campo obrigatório: name");
+            throw new IllegalArgumentException("name is required");
         }
 
         Objects.requireNonNull(audit, "audit is required");
