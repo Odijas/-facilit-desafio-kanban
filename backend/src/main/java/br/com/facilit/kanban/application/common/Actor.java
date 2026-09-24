@@ -29,6 +29,13 @@ public record Actor(Role role, UUID responsibleId) {
         return new Actor(Role.RESPONSIBLE, responsibleId);
     }
 
+    /**
+     * Identificação do ator para log de negócio: perfil e, no caso do responsável, só o id.
+     */
+    public String auditLabel() {
+        return isAdmin() ? "ADMIN" : "RESPONSIBLE:" + responsibleId;
+    }
+
     public boolean isAdmin() {
         return role == Role.ADMIN;
     }
@@ -39,7 +46,7 @@ public record Actor(Role role, UUID responsibleId) {
 
     public void requireAdmin() {
         if (!isAdmin()) {
-            throw new ForbiddenOperationException("Only administrators can perform this operation");
+            throw new ForbiddenOperationException("Apenas o administrador pode realizar esta operação.");
         }
     }
 }

@@ -23,7 +23,7 @@ class ResponsibleTest {
     void rejectsMalformedEmail() {
         assertThatThrownBy(() -> responsible("not-an-email"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("email is invalid");
+                .hasMessage("E-mail inválido.");
     }
 
     private static Responsible responsible(String email) {
