@@ -591,7 +591,7 @@
           ]
         },
         {
-          "name": "Transição bloqueada Em andamento → Atrasado → 400",
+          "name": "Transição bloqueada Em andamento → Atrasado → 422",
           "request": {
             "method": "PATCH",
             "header": [
@@ -633,8 +633,60 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
-                  "pm.test(\"code = INVALID_REQUEST\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_REQUEST\"));"
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"code = TRANSITION_BLOCKED\", () => pm.expect(pm.response.json().code).to.eql(\"TRANSITION_BLOCKED\"));",
+                  "pm.test(\"orientação em pt-BR\", () => pm.expect(pm.response.json().detail).to.include(\"Em andamento → Atrasado bloqueado\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Em andamento → A iniciar sem confirmação → 422",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "projects",
+                "{{projectId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"NOT_STARTED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"code = CONFIRMATION_REQUIRED\", () => pm.expect(pm.response.json().code).to.eql(\"CONFIRMATION_REQUIRED\"));",
+                  "pm.test(\"data que seria apagada\", () => pm.expect(pm.response.json().clearedField).to.eql(\"actualStart\"));"
                 ]
               }
             }
@@ -766,6 +818,57 @@
                   "const body = pm.response.json();",
                   "pm.test(\"sem erros GraphQL\", () => pm.expect(body.errors).to.be.undefined);",
                   "pm.test(\"status via GraphQL\", () => pm.expect(body.data.project.status).to.eql(\"IN_PROGRESS\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Em andamento → A iniciar com confirm = true",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "projects",
+                "{{projectId}}",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"NOT_STARTED\",\n  \"confirm\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"status = NOT_STARTED\", () => pm.expect(pm.response.json().status).to.eql(\"NOT_STARTED\"));",
+                  "pm.test(\"início realizado apagado\", () => pm.expect(pm.response.json().actualStart).to.eql(null));"
                 ]
               }
             }
