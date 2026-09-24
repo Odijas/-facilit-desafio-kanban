@@ -1,5 +1,6 @@
 package br.com.facilit.kanban.infrastructure.config;
 
+import br.com.facilit.kanban.application.common.TransactionRunner;
 import br.com.facilit.kanban.application.project.ProjectRepository;
 import br.com.facilit.kanban.application.project.ProjectService;
 import br.com.facilit.kanban.application.responsible.ResponsibleCredentialRepository;
@@ -15,6 +16,7 @@ import java.time.ZoneId;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration(proxyBeanMethods = false)
 public class ApplicationBeans {
@@ -40,17 +42,24 @@ public class ApplicationBeans {
     }
 
     @Bean
+    TransactionRunner transactionRunner(PlatformTransactionManager transactionManager) {
+        return new SpringTransactionRunner(transactionManager);
+    }
+
+    @Bean
     ResponsibleService responsibleService(
             ResponsibleRepository responsibleRepository,
             SecretariatRepository secretariatRepository,
             ProjectRepository projectRepository,
             ResponsibleCredentialRepository responsibleCredentialRepository,
+            TransactionRunner transactionRunner,
             Clock applicationClock) {
         return new ResponsibleService(
                 responsibleRepository,
                 secretariatRepository,
                 projectRepository,
                 responsibleCredentialRepository,
+                transactionRunner,
                 applicationClock);
     }
 
@@ -58,10 +67,12 @@ public class ApplicationBeans {
     ResponsibleCredentialService responsibleCredentialService(
             ResponsibleRepository responsibleRepository,
             ResponsibleCredentialRepository responsibleCredentialRepository,
+            TransactionRunner transactionRunner,
             Clock applicationClock) {
         return new ResponsibleCredentialService(
                 responsibleRepository,
                 responsibleCredentialRepository,
+                transactionRunner,
                 applicationClock);
     }
 
@@ -69,8 +80,9 @@ public class ApplicationBeans {
     SecretariatService secretariatService(
             SecretariatRepository secretariatRepository,
             ResponsibleRepository responsibleRepository,
+            TransactionRunner transactionRunner,
             Clock applicationClock) {
-        return new SecretariatService(secretariatRepository, responsibleRepository, applicationClock);
+        return new SecretariatService(secretariatRepository, responsibleRepository, transactionRunner, applicationClock);
     }
 
     @Bean
@@ -78,11 +90,13 @@ public class ApplicationBeans {
             ProjectRepository projectRepository,
             ResponsibleRepository responsibleRepository,
             ProjectScheduleCalculator projectScheduleCalculator,
+            TransactionRunner transactionRunner,
             Clock applicationClock) {
         return new ProjectService(
                 projectRepository,
                 responsibleRepository,
                 projectScheduleCalculator,
+                transactionRunner,
                 applicationClock);
     }
 }

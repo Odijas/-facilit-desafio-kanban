@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import br.com.facilit.kanban.application.common.Actor;
 import br.com.facilit.kanban.application.common.PageQuery;
+import br.com.facilit.kanban.application.support.DirectTransactionRunner;
 import br.com.facilit.kanban.application.support.InMemoryProjectRepository;
 import br.com.facilit.kanban.application.support.InMemoryResponsibleRepository;
 import br.com.facilit.kanban.application.support.MutableClock;
@@ -55,6 +56,7 @@ class ProjectScheduleRefresherTest {
                 projectRepository,
                 responsibleRepository,
                 new ProjectScheduleCalculator(),
+                new DirectTransactionRunner(),
                 clock);
     }
 
@@ -168,7 +170,11 @@ class ProjectScheduleRefresherTest {
         responsibles.save(new Responsible(
                 responsibleId, "Ana Silva", "ana@example.com", "Analista", null, new AuditMetadata(NOW, NOW)));
         ProjectService lateService = new ProjectService(
-                new InMemoryProjectRepository(), responsibles, new ProjectScheduleCalculator(), lateEvening);
+                new InMemoryProjectRepository(),
+                responsibles,
+                new ProjectScheduleCalculator(),
+                new DirectTransactionRunner(),
+                lateEvening);
 
         Project created = lateService.create(new SaveProjectCommand(
                 "Portal", Set.of(responsibleId), TODAY, TODAY.plusDays(10), null, null), Actor.admin());

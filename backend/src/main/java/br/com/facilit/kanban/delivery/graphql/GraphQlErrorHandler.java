@@ -16,9 +16,9 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.graphql.data.method.annotation.GraphQlExceptionHandler;
 import org.springframework.graphql.execution.ErrorType;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 
 @ControllerAdvice
@@ -64,7 +64,7 @@ public class GraphQlErrorHandler {
     @GraphQlExceptionHandler
     public GraphQLError handleOptimisticLock(
             GraphqlErrorBuilder<?> errorBuilder,
-            ObjectOptimisticLockingFailureException exception) {
+            OptimisticLockingFailureException exception) {
         return errorBuilder
                 .errorType(ErrorType.BAD_REQUEST)
                 .message("O registro foi alterado por outra operação ao mesmo tempo. Recarregue os dados e tente "

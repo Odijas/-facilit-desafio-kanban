@@ -6,6 +6,7 @@ import br.com.facilit.kanban.application.common.ForbiddenOperationException;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
+import br.com.facilit.kanban.application.common.TransactionRunner;
 import br.com.facilit.kanban.application.responsible.ResponsibleRepository;
 import br.com.facilit.kanban.domain.common.AuditMetadata;
 import br.com.facilit.kanban.domain.common.BusinessRuleException;
@@ -30,17 +31,20 @@ public final class ProjectService {
     private final ProjectScheduleCalculator scheduleCalculator;
     private final ProjectStatusTransition statusTransition;
     private final ProjectScheduleRefresher scheduleRefresher;
+    private final TransactionRunner transactions;
     private final Clock clock;
 
     public ProjectService(
             ProjectRepository projectRepository,
             ResponsibleRepository responsibleRepository,
             ProjectScheduleCalculator scheduleCalculator,
+            TransactionRunner transactions,
             Clock clock) {
         this.projectRepository = Objects.requireNonNull(projectRepository);
         this.responsibleRepository = Objects.requireNonNull(responsibleRepository);
         this.scheduleCalculator = Objects.requireNonNull(scheduleCalculator);
         this.statusTransition = new ProjectStatusTransition(scheduleCalculator);
+        this.transactions = Objects.requireNonNull(transactions);
         this.clock = Objects.requireNonNull(clock);
         this.scheduleRefresher = new ProjectScheduleRefresher(projectRepository, scheduleCalculator, clock);
     }
@@ -58,22 +62,24 @@ public final class ProjectService {
     public Project create(SaveProjectCommand command, Actor actor) {
         Objects.requireNonNull(command, "command is required");
         Objects.requireNonNull(actor, "actor is required");
-        requireMembership(command.responsibleIds(), actor);
-        validateResponsibles(command.responsibleIds());
+        Project saved = transactions.execute(() -> {
+            requireMembership(command.responsibleIds(), actor);
+            validateResponsibles(command.responsibleIds());
 
-        LocalDate today = LocalDate.now(clock);
-        ProjectDates dates = datesFrom(command);
-        dates.requireActualDatesNotAfter(today);
-        ProjectScheduleMetrics schedule = scheduleCalculator.calculate(dates, today);
-        Instant now = clock.instant();
-        Project project = new Project(
-                UUID.randomUUID(),
-                command.name(),
-                command.responsibleIds(),
-                dates,
-                schedule,
-                new AuditMetadata(now, now));
-        Project saved = projectRepository.save(project, today);
+            LocalDate today = LocalDate.now(clock);
+            ProjectDates dates = datesFrom(command);
+            dates.requireActualDatesNotAfter(today);
+            ProjectScheduleMetrics schedule = scheduleCalculator.calculate(dates, today);
+            Instant now = clock.instant();
+            Project project = new Project(
+                    UUID.randomUUID(),
+                    command.name(),
+                    command.responsibleIds(),
+                    dates,
+                    schedule,
+                    new AuditMetadata(now, now));
+            return projectRepository.save(project, today);
+        });
         BusinessLog.info("projeto.criado", "id=" + saved.id() + " status=" + saved.status()
                 + " ator=" + actor.auditLabel());
         return saved;
@@ -114,23 +120,25 @@ public final class ProjectService {
     public Project update(UUID id, SaveProjectCommand command, Actor actor) {
         Objects.requireNonNull(command, "command is required");
         Objects.requireNonNull(actor, "actor is required");
-        Project current = get(id);
-        requireMembership(current.responsibleIds(), actor);
-        requireMembership(command.responsibleIds(), actor);
-        validateResponsibles(command.responsibleIds());
+        Project saved = transactions.execute(() -> {
+            Project current = get(id);
+            requireMembership(current.responsibleIds(), actor);
+            requireMembership(command.responsibleIds(), actor);
+            validateResponsibles(command.responsibleIds());
 
-        LocalDate today = LocalDate.now(clock);
-        ProjectDates dates = datesFrom(command);
-        dates.requireActualDatesNotAfter(today);
-        ProjectScheduleMetrics schedule = scheduleCalculator.calculate(dates, today);
-        Project updated = new Project(
-                current.id(),
-                command.name(),
-                command.responsibleIds(),
-                dates,
-                schedule,
-                new AuditMetadata(current.audit().createdAt(), clock.instant()));
-        Project saved = projectRepository.save(updated, today);
+            LocalDate today = LocalDate.now(clock);
+            ProjectDates dates = datesFrom(command);
+            dates.requireActualDatesNotAfter(today);
+            ProjectScheduleMetrics schedule = scheduleCalculator.calculate(dates, today);
+            Project updated = new Project(
+                    current.id(),
+                    command.name(),
+                    command.responsibleIds(),
+                    dates,
+                    schedule,
+                    new AuditMetadata(current.audit().createdAt(), clock.instant()));
+            return projectRepository.save(updated, today);
+        });
         BusinessLog.info("projeto.atualizado", "id=" + saved.id() + " status=" + saved.status()
                 + " ator=" + actor.auditLabel());
         return saved;
@@ -144,36 +152,42 @@ public final class ProjectService {
     public Project transition(UUID id, ProjectStatus requestedStatus, boolean confirmed, Actor actor) {
         Objects.requireNonNull(requestedStatus, "requestedStatus is required");
         Objects.requireNonNull(actor, "actor is required");
-        Project current = get(id);
-        requireMembership(current.responsibleIds(), actor);
-        LocalDate today = LocalDate.now(clock);
-        ProjectTransitionResult transition;
-        try {
-            transition = statusTransition.transition(current, requestedStatus, today, confirmed);
-        } catch (BusinessRuleException exception) {
-            BusinessLog.info("projeto.transicao.recusada", "id=" + current.id() + " de=" + current.status()
-                    + " para=" + requestedStatus + " motivo=" + exception.getClass().getSimpleName()
-                    + " ator=" + actor.auditLabel());
-            throw exception;
-        }
-        Project updated = new Project(
-                current.id(),
-                current.name(),
-                current.responsibleIds(),
-                transition.dates(),
-                transition.schedule(),
-                new AuditMetadata(current.audit().createdAt(), clock.instant()));
-        Project saved = projectRepository.save(updated, today);
-        BusinessLog.info("projeto.transicao", "id=" + saved.id() + " de=" + current.status()
+        TransitionOutcome outcome = transactions.execute(() -> {
+            Project current = get(id);
+            requireMembership(current.responsibleIds(), actor);
+            LocalDate today = LocalDate.now(clock);
+            ProjectTransitionResult transition;
+            try {
+                transition = statusTransition.transition(current, requestedStatus, today, confirmed);
+            } catch (BusinessRuleException exception) {
+                BusinessLog.info("projeto.transicao.recusada", "id=" + current.id() + " de=" + current.status()
+                        + " para=" + requestedStatus + " motivo=" + exception.getClass().getSimpleName()
+                        + " ator=" + actor.auditLabel());
+                throw exception;
+            }
+            Project updated = new Project(
+                    current.id(),
+                    current.name(),
+                    current.responsibleIds(),
+                    transition.dates(),
+                    transition.schedule(),
+                    new AuditMetadata(current.audit().createdAt(), clock.instant()));
+            return new TransitionOutcome(current.status(), projectRepository.save(updated, today));
+        });
+        Project saved = outcome.saved();
+        BusinessLog.info("projeto.transicao", "id=" + saved.id() + " de=" + outcome.previousStatus()
                 + " para=" + saved.status() + " confirmado=" + confirmed + " ator=" + actor.auditLabel());
         return saved;
     }
 
     public void delete(UUID id, Actor actor) {
         Objects.requireNonNull(actor, "actor is required");
-        Project project = get(id);
-        requireMembership(project.responsibleIds(), actor);
-        projectRepository.deleteById(project.id());
+        Project project = transactions.execute(() -> {
+            Project current = get(id);
+            requireMembership(current.responsibleIds(), actor);
+            projectRepository.deleteById(current.id());
+            return current;
+        });
         BusinessLog.info("projeto.excluido", "id=" + project.id() + " ator=" + actor.auditLabel());
     }
 
@@ -199,5 +213,8 @@ public final class ProjectService {
                 command.plannedEnd(),
                 command.actualStart(),
                 command.actualEnd());
+    }
+
+    private record TransitionOutcome(ProjectStatus previousStatus, Project saved) {
     }
 }
