@@ -28,12 +28,23 @@ class ProjectStatusTransitionTest {
     }
 
     @Test
-    void transitionsNotStartedToOverdueWhenDatesAlreadyClassifyAsOverdue() {
-        Project project = project(ProjectStatus.NOT_STARTED, new ProjectDates(TODAY.minusDays(1), TODAY.plusDays(10), null, null));
+    void blocksNotStartedToOverdueOnPlannedStartBecauseDatesStillClassifyAsNotStarted() {
+        Project project = project(ProjectStatus.NOT_STARTED, new ProjectDates(TODAY, TODAY.plusDays(10), null, null));
 
-        ProjectTransitionResult result = transition.transition(project, ProjectStatus.OVERDUE, TODAY);
+        assertThatThrownBy(() -> transition.transition(project, ProjectStatus.OVERDUE, TODAY))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("does not match recalculated status NOT_STARTED");
+    }
 
-        assertThat(result.schedule().status()).isEqualTo(ProjectStatus.OVERDUE);
+    @Test
+    void treatsStaleNotStartedAsOverdueOnceThePlannedStartHasPassed() {
+        Project project = staleProject(
+                ProjectStatus.NOT_STARTED,
+                new ProjectDates(TODAY.minusDays(1), TODAY.plusDays(10), null, null));
+
+        assertThatThrownBy(() -> transition.transition(project, ProjectStatus.OVERDUE, TODAY))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Project is already in status OVERDUE");
     }
 
     @Test
@@ -66,14 +77,25 @@ class ProjectStatusTransitionTest {
     }
 
     @Test
-    void transitionsInProgressToOverdueWhenElapsedDatesNowRecalculateAsOverdue() {
-        Project project = project(
+    void doesNotLetStaleInProgressBypassTheInProgressToOverdueBlock() {
+        Project project = staleProject(
                 ProjectStatus.IN_PROGRESS,
                 new ProjectDates(TODAY.minusDays(5), TODAY.minusDays(1), TODAY.minusDays(5), null));
 
-        ProjectTransitionResult result = transition.transition(project, ProjectStatus.OVERDUE, TODAY);
+        assertThatThrownBy(() -> transition.transition(project, ProjectStatus.OVERDUE, TODAY))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Project is already in status OVERDUE");
+    }
 
-        assertThat(result.schedule().status()).isEqualTo(ProjectStatus.OVERDUE);
+    @Test
+    void appliesOverdueRowWhenStoredInProgressIsStale() {
+        Project project = staleProject(
+                ProjectStatus.IN_PROGRESS,
+                new ProjectDates(TODAY.minusDays(5), TODAY.minusDays(1), TODAY.minusDays(5), null));
+
+        assertThatThrownBy(() -> transition.transition(project, ProjectStatus.NOT_STARTED, TODAY))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Cannot transition OVERDUE to NOT_STARTED");
     }
 
     @Test
@@ -179,13 +201,36 @@ class ProjectStatusTransitionTest {
                 .hasMessageContaining("already in status");
     }
 
-    private Project project(ProjectStatus sourceStatus, ProjectDates dates) {
+    /**
+     * Projeto coerente com hoje: o status gravado é o que as datas classificam.
+     */
+    private Project project(ProjectStatus expectedStatus, ProjectDates dates) {
+        ProjectScheduleMetrics schedule = calculator.calculate(dates, TODAY);
+        assertThat(schedule.status())
+                .as("as datas do teste devem classificar o projeto como %s", expectedStatus)
+                .isEqualTo(expectedStatus);
         return new Project(
                 UUID.randomUUID(),
                 "Portal",
                 Set.of(UUID.randomUUID()),
                 dates,
-                new ProjectScheduleMetrics(sourceStatus, 0, 0),
+                schedule,
+                new AuditMetadata(NOW, NOW));
+    }
+
+    /**
+     * Projeto gravado em outro dia: o status gravado difere do que as datas classificam hoje.
+     */
+    private Project staleProject(ProjectStatus storedStatus, ProjectDates dates) {
+        assertThat(calculator.calculate(dates, TODAY).status())
+                .as("o status gravado deve estar desatualizado")
+                .isNotEqualTo(storedStatus);
+        return new Project(
+                UUID.randomUUID(),
+                "Portal",
+                Set.of(UUID.randomUUID()),
+                dates,
+                new ProjectScheduleMetrics(storedStatus, 0, 0),
                 new AuditMetadata(NOW, NOW));
     }
 }

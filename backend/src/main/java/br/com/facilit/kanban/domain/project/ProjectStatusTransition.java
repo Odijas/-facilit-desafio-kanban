@@ -19,7 +19,8 @@ public final class ProjectStatusTransition {
         Objects.requireNonNull(requestedStatus, "requestedStatus is required");
         Objects.requireNonNull(today, "today is required");
 
-        ProjectStatus currentStatus = project.status();
+        // O status gravado pode ter sido calculado em outro dia; a origem da transição é sempre o status de hoje.
+        ProjectStatus currentStatus = scheduleCalculator.calculate(project.dates(), today).status();
         if (currentStatus == requestedStatus) {
             throw new IllegalArgumentException("Project is already in status " + requestedStatus);
         }
