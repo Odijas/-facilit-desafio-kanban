@@ -75,7 +75,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.collectionVariables.set(\"runId\", String(Date.now()));",
-                  "const today = new Date();",
+                  "// \"Hoje\" da API é a data em America/Sao_Paulo (APP_TIME_ZONE): UTC-3, sem horário de verão desde 2019.",
+                  "const today = new Date(Date.now() - 3 * 60 * 60 * 1000);",
                   "const end = new Date(today.getTime() + 10 * 24 * 60 * 60 * 1000);",
                   "pm.collectionVariables.set(\"today\", today.toISOString().slice(0, 10));",
                   "pm.collectionVariables.set(\"plannedEnd\", end.toISOString().slice(0, 10));"

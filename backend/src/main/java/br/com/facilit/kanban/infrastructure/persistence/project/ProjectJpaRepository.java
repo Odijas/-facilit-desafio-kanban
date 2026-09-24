@@ -1,6 +1,7 @@
 package br.com.facilit.kanban.infrastructure.persistence.project;
 
 import br.com.facilit.kanban.domain.project.ProjectStatus;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -10,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -37,7 +39,52 @@ interface ProjectJpaRepository
 
     long countByDelayDaysGreaterThan(long delayDays);
 
+    @Query("""
+            select p.id as id,
+                   p.plannedStart as plannedStart,
+                   p.plannedEnd as plannedEnd,
+                   p.actualStart as actualStart,
+                   p.actualEnd as actualEnd
+            from ProjectJpaEntity p
+            where p.status in :statuses
+              and p.scheduleCalculatedOn < :today
+            order by p.id
+            """)
+    List<StaleScheduleView> findStaleSchedules(
+            @Param("statuses") Collection<ProjectStatus> statuses,
+            @Param("today") LocalDate today,
+            Pageable pageable);
+
+    @Modifying
+    @Query("""
+            update ProjectJpaEntity p
+            set p.status = :status,
+                p.delayDays = :delayDays,
+                p.remainingTimePercentage = :remainingTimePercentage,
+                p.scheduleCalculatedOn = :calculatedOn
+            where p.id = :id
+              and p.scheduleCalculatedOn < :calculatedOn
+            """)
+    int updateSchedule(
+            @Param("id") UUID id,
+            @Param("status") ProjectStatus status,
+            @Param("delayDays") long delayDays,
+            @Param("remainingTimePercentage") short remainingTimePercentage,
+            @Param("calculatedOn") LocalDate calculatedOn);
+
     long countByResponsibles_Id(UUID responsibleId);
+
+    interface StaleScheduleView {
+        UUID getId();
+
+        LocalDate getPlannedStart();
+
+        LocalDate getPlannedEnd();
+
+        LocalDate getActualStart();
+
+        LocalDate getActualEnd();
+    }
 
     interface ProjectStatusSummaryView {
         ProjectStatus getStatus();

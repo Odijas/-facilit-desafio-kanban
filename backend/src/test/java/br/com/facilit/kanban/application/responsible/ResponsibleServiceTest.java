@@ -20,6 +20,7 @@ import br.com.facilit.kanban.domain.project.ProjectStatus;
 import br.com.facilit.kanban.domain.responsible.Responsible;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Set;
 import java.util.UUID;
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.Test;
 class ResponsibleServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-09-22T12:00:00Z");
+    private static final LocalDate TODAY = LocalDate.of(2026, 9, 22);
     private InMemoryResponsibleRepository responsibleRepository;
     private InMemoryProjectRepository projectRepository;
     private InMemorySecretariatRepository secretariatRepository;
@@ -98,7 +100,8 @@ class ResponsibleServiceTest {
                 Set.of(responsible.id()),
                 new ProjectDates(null, null, null, null),
                 new ProjectScheduleMetrics(ProjectStatus.NOT_STARTED, 0, 0),
-                new AuditMetadata(now, now)));
+                new AuditMetadata(now, now)),
+                TODAY);
 
         assertThatThrownBy(() -> service.delete(responsible.id(), Actor.admin()))
                 .isInstanceOf(ConflictException.class)

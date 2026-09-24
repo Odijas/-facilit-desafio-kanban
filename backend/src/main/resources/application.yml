@@ -57,6 +57,11 @@ management:
         "[http.server.requests]": true
 
 app:
+  # Fuso de negócio: define o "hoje" das regras de status, atraso e % de tempo restante.
+  time-zone: ${APP_TIME_ZONE:America/Sao_Paulo}
+  schedule-refresh:
+    # Recálculo diário (segundo minuto hora dia mês dia-da-semana), no fuso acima.
+    cron: "${APP_SCHEDULE_REFRESH_CRON:0 0 0 * * *}"
   metrics:
     username: ${APP_METRICS_USERNAME:prometheus}
     password: ${APP_METRICS_PASSWORD:}

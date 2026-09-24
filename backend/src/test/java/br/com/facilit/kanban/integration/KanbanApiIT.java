@@ -3,8 +3,8 @@ package br.com.facilit.kanban.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -49,6 +49,10 @@ class KanbanApiIT {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    // Mesmo relógio da aplicação: "hoje" no fuso de negócio, não em UTC.
+    @Autowired
+    private Clock clock;
 
     private AuthenticatedSession authenticatedSession;
 
@@ -129,7 +133,7 @@ class KanbanApiIT {
                 HttpStatus.CREATED);
         String responsibleId = responsible.path("id").asText();
 
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate today = LocalDate.now(clock);
         JsonNode project = requireBody(post(
                 "/api/v1/projects",
                 Map.of(
@@ -193,7 +197,7 @@ class KanbanApiIT {
                 HttpStatus.CREATED);
         String responsibleId = responsible.path("id").asText();
 
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate today = LocalDate.now(clock);
         JsonNode matchingProject = requireBody(post(
                 "/api/v1/projects",
                 Map.of(

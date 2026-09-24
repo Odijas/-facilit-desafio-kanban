@@ -6,6 +6,8 @@ import br.com.facilit.kanban.application.common.ResourceNotFoundException;
 import br.com.facilit.kanban.application.project.ProjectFilter;
 import br.com.facilit.kanban.application.project.ProjectIndicators;
 import br.com.facilit.kanban.application.project.ProjectRepository;
+import br.com.facilit.kanban.application.project.ProjectScheduleSnapshot;
+import br.com.facilit.kanban.application.project.ProjectScheduleUpdate;
 import br.com.facilit.kanban.application.project.ProjectStatusIndicator;
 import br.com.facilit.kanban.domain.common.AuditMetadata;
 import br.com.facilit.kanban.domain.project.Project;
@@ -20,6 +22,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,6 +39,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class ProjectPersistenceAdapter implements ProjectRepository {
+
+    /** Projeto concluído não muda com o tempo (término realizado → Concluído, 0 dia, 0%). */
+    private static final Set<ProjectStatus> STATUSES_THAT_CHANGE_OVER_TIME =
+            EnumSet.complementOf(EnumSet.of(ProjectStatus.COMPLETED));
 
     private final ProjectJpaRepository repository;
     private final ResponsibleJpaRepository responsibleRepository;
@@ -101,7 +108,7 @@ public class ProjectPersistenceAdapter implements ProjectRepository {
 
     @Override
     @Transactional
-    public Project save(Project project) {
+    public Project save(Project project, LocalDate scheduleCalculatedOn) {
         Set<ResponsibleJpaEntity> responsibles = Set.copyOf(responsibleRepository.findAllById(project.responsibleIds()));
         if (responsibles.size() != project.responsibleIds().size()) {
             throw new ResourceNotFoundException("At least one responsible was not found");
@@ -118,10 +125,44 @@ public class ProjectPersistenceAdapter implements ProjectRepository {
                 project.dates().actualEnd(),
                 project.delayDays(),
                 project.remainingTimePercentage(),
+                scheduleCalculatedOn,
                 project.audit().createdAt(),
                 project.audit().updatedAt(),
                 responsibles);
         return toDomain(repository.save(entity));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProjectScheduleSnapshot> findStaleSchedules(LocalDate today, int limit) {
+        return repository.findStaleSchedules(
+                        STATUSES_THAT_CHANGE_OVER_TIME,
+                        today,
+                        PageRequest.of(0, limit))
+                .stream()
+                .map(view -> new ProjectScheduleSnapshot(
+                        view.getId(),
+                        new ProjectDates(
+                                view.getPlannedStart(),
+                                view.getPlannedEnd(),
+                                view.getActualStart(),
+                                view.getActualEnd())))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public int updateSchedules(List<ProjectScheduleUpdate> updates, LocalDate calculatedOn) {
+        int updated = 0;
+        for (ProjectScheduleUpdate update : updates) {
+            updated += repository.updateSchedule(
+                    update.id(),
+                    update.schedule().status(),
+                    update.schedule().delayDays(),
+                    (short) update.schedule().remainingTimePercentage(),
+                    calculatedOn);
+        }
+        return updated;
     }
 
     @Override

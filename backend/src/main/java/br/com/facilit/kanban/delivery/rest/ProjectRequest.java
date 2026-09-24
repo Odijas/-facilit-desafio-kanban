@@ -10,8 +10,8 @@ import java.util.UUID;
 public record ProjectRequest(
         @NotBlank @Schema(example = "Implantação do portal") String name,
         @NotEmpty Set<UUID> responsibleIds,
-        @Schema(example = "2026-09-22") LocalDate plannedStart,
-        @Schema(example = "2026-10-10") LocalDate plannedEnd,
-        @Schema(example = "2026-09-22") LocalDate actualStart,
-        @Schema(example = "2026-10-09") LocalDate actualEnd) {
+        @Schema(example = "2026-09-01") LocalDate plannedStart,
+        @Schema(example = "2026-10-30") LocalDate plannedEnd,
+        @Schema(example = "2026-09-02", description = "Não pode ser posterior a hoje") LocalDate actualStart,
+        @Schema(example = "2026-09-18", description = "Não pode ser posterior a hoje") LocalDate actualEnd) {
 }
