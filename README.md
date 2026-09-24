@@ -25,7 +25,7 @@ API Java para gestão de projetos em quadro Kanban, feita para o Desafio Técnic
 | CRUD de Projeto e Responsável (e-mail único) com Swagger | REST `/api/v1/projects`, `/api/v1/responsibles`; `/swagger-ui.html` e `/api-docs` |
 | Status calculado, dias de atraso e % de tempo restante | domínio puro: `ProjectScheduleCalculator` |
 | Quadro Kanban e transições da tabela, com bloqueio e mensagem clara | `ProjectStatusTransition` + `PATCH /api/v1/projects/{id}/status` |
-| Indicadores (contagem e média de atraso por status) | `GET /api/v1/indicators/projects` e GraphQL `projectIndicators` |
+| Indicadores (status, secretaria, responsável e prazos) | REST `/api/v1/indicators/projects*` e GraphQL `projectIndicators*`/`projectDeadlines` |
 | Testes JUnit de services, controllers e integração | `backend/src/test`: services com repositórios em memória e com Mockito; controllers REST e GraphQL isolados com o service simulado; repositório, transações e a tabela de transição pela API com PostgreSQL real (Testcontainers) |
 | Docker Compose (app + banco) | `compose.yaml` |
 | `AI_USAGE.md` | [`AI_USAGE.md`](AI_USAGE.md) |
@@ -159,7 +159,8 @@ Camadas de teste do backend:
 | Controllers GraphQL | `@GraphQlTest` com o service simulado | `ProjectGraphQlControllerTest`, `ResponsibleGraphQlControllerTest`, `SecretariatGraphQlControllerTest` |
 | Repositório | `@DataJpaTest` com PostgreSQL real e as migrations | `ProjectPersistenceAdapterIT` |
 | Transações | Spring Boot com PostgreSQL real | `TransactionIT` (falha no meio desfaz tudo; edição concorrente não sobrescreve) |
-| API | servidor real, sessão e CSRF | `StatusTransitionApiIT` (12 linhas pela REST e 3 pela GraphQL), `KanbanApiIT`, `SecurityApiIT`, `OpenApiContractIT` |
+| API | servidor real, sessão e CSRF | `StatusTransitionApiIT` (12 linhas pela REST e 3 pela GraphQL), `ProjectIndicatorsIT`, `KanbanApiIT`, `SecurityApiIT`, `OpenApiContractIT` |
+| BDD | Cucumber + JUnit Platform, Gherkin em pt-BR | `features/transicoes.feature` cobre as 12 linhas da tabela |
 
 Frontend:
 
@@ -181,6 +182,7 @@ Coleção de API ([`docs/api/facilit-kanban.postman_collection.json`](docs/api/f
 
 - OpenAPI com exemplos e schemas em `/api-docs`; Swagger UI em `/swagger-ui.html`.
 - GraphQL (`backend/src/main/resources/graphql/*.graphqls`) espelha o REST: consultas de projetos com os mesmos filtros, indicadores, CRUD e transição.
+- Indicadores adicionais: `GET /api/v1/indicators/projects/by-secretariat`, `/by-responsible` e `/deadlines?withinDays=7` (`withinDays` entre 1 e 90). O GraphQL expõe `projectIndicatorsBySecretariat`, `projectIndicatorsByResponsible` e `projectDeadlines`.
 - Erros REST em `ProblemDetail` (`application/problem+json`) com `code` estável e mensagem em pt-BR:
 
   | HTTP | `code` | Quando |
@@ -219,7 +221,7 @@ Coleção de API ([`docs/api/facilit-kanban.postman_collection.json`](docs/api/f
 `.github/workflows/ci.yml` roda em `push`, `pull_request` e manualmente, com três jobs:
 
 - `frontend`: Node 24, pnpm 12.5.1, `pnpm install --frozen-lockfile`, lint, typecheck, `check:strict`, testes e build;
-- `backend`: JDK 25 (Temurin) com cache Maven, `mvn -B -ntp clean verify` (compilação com `-Xlint:all -Werror`, unitários e integração com Testcontainers);
+- `backend`: JDK 25 (Temurin) com cache Maven, `mvn -B -ntp clean verify` (compilação com `-Xlint:all -Werror`, unitários, BDD, integração com Testcontainers e JaCoCo com mínimo global de 95% de linhas);
 - `repository`: `git diff --check` sobre a árvore inteira, ausência de `localStorage`/`sessionStorage` no frontend e de `.env`/chaves versionados.
 
 Práticas de segurança do workflow: `permissions: contents: read`, actions fixadas por SHA completo, `persist-credentials: false`, sem `pull_request_target`, sem runner próprio e sem segredos.
@@ -265,7 +267,7 @@ O uso de IA no desenvolvimento está descrito em [`AI_USAGE.md`](AI_USAGE.md). A
 - Execução dos testes de integração depende de Docker disponível (Testcontainers).
 - O recálculo diário grava status e métricas com a data do cálculo; com várias instâncias, cada uma pode repetir a verificação no mesmo dia, sem efeito (é idempotente).
 - Concorrência: o `@Version` protege contra duas gravações simultâneas. A API não recebe a versão do cliente, então não detecta que alguém editou o projeto entre a leitura na tela e o envio; nesse caso, a última gravação vale.
-- Plano de conformidade em andamento (`docs/governance/PLANO-CONFORMIDADE-F5.md`): os lotes seguintes cobrem a Etapa 3 completa e os diferenciais restantes (F5-L4, opcional) e a release (F5-L5).
+- Plano de conformidade em andamento (`docs/governance/PLANO-CONFORMIDADE-F5.md`): F5-L1 a F5-L4 estão concluídos; resta o F5-L5 de release e entrega.
 
 ## Governança e histórico de entrega
 
@@ -293,7 +295,8 @@ Estado dos lotes:
 - F4 — Freeze e release `v1.0.0`: evidências em `docs/evidence/F4/` (auditoria requisito → implementação → teste → evidência, revisão de segurança, saída do gate de freeze).
 - F5-L1 — Regras sempre corretas (status de hoje, fuso, datas realizadas): GREEN em 2026-09-24.
 - F5-L2 — Contrato de erro, confirmações, Swagger e logs: GREEN em 2026-09-24.
-- F5-L3 — Camadas de teste completas e transação por caso de uso: CANDIDATE em 2026-09-24, aguardando gate local.
+- F5-L3 — Camadas de teste completas e transação por caso de uso: GREEN em 2026-09-24.
+- F5-L4 — Etapa 3, BDD e cobertura: GREEN em 2026-09-24.
 
 ### Resumo por lote
 
@@ -380,3 +383,11 @@ O F5-L1 corrige o principal desvio da v1.0.0 em relação ao desafio: status, di
 - `ProjectServiceMockitoTest` verifica interações (bloqueio não grava, recálculo antes da leitura, ordem das chamadas);
 - testes de integração novos: `ProjectPersistenceAdapterIT` (`@DataJpaTest`), `TransactionIT` e `StatusTransitionApiIT` (a tabela inteira pela API);
 - agente do Mockito configurado explicitamente no Surefire e no Failsafe, como pede a documentação do Mockito para Java 21 ou mais novo.
+
+
+### F5-L4 — Etapa 3, BDD e cobertura
+
+- indicadores adicionais por secretaria, responsável e janela de prazo em REST e GraphQL;
+- `ProjectIndicatorsIT` cobre os contratos e validações da Etapa 3;
+- Cucumber/JUnit Platform formaliza as 12 linhas da tabela de transição em Gherkin pt-BR;
+- JaCoCo integrado ao `mvn clean verify`, sem exclusões artificiais, com mínimo global de 95% de linhas; a medição de fechamento atingiu 95,61%.
