@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -58,6 +59,12 @@ public class ProjectJpaEntity {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    // Wrapper (nulo antes do INSERT): o Spring Data usa a versão nula para saber que a entidade é nova e
+    // chama persist; com a versão preenchida, o Hibernate recusa a gravação de uma versão antiga.
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -145,6 +152,10 @@ public class ProjectJpaEntity {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public Set<ResponsibleJpaEntity> getResponsibles() {
