@@ -126,6 +126,35 @@ class ProjectServiceTest {
     }
 
     @Test
+    void rejectsActualDatesAfterTodayOnCreateAndUpdate() {
+        SaveProjectCommand futureStart = new SaveProjectCommand(
+                "Portal",
+                Set.of(responsibleId),
+                TODAY,
+                TODAY.plusDays(10),
+                TODAY.plusDays(1),
+                null);
+
+        assertThatThrownBy(() -> service.create(futureStart, Actor.admin()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageStartingWith("Início realizado (2026-09-23) não pode ser posterior a hoje (2026-09-22)");
+
+        Project created = service.create(command(null), Actor.admin());
+        SaveProjectCommand futureEnd = new SaveProjectCommand(
+                "Portal",
+                Set.of(responsibleId),
+                TODAY,
+                TODAY.plusDays(10),
+                TODAY,
+                TODAY.plusDays(1));
+
+        assertThatThrownBy(() -> service.update(created.id(), futureEnd, Actor.admin()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageStartingWith("Término realizado (2026-09-23) não pode ser posterior a hoje (2026-09-22)");
+        assertThat(service.get(created.id())).isEqualTo(created);
+    }
+
+    @Test
     void rejectsProjectWithUnknownResponsible() {
         SaveProjectCommand command = new SaveProjectCommand(
                 "Portal",

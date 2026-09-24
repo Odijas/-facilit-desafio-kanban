@@ -27,6 +27,7 @@ public final class ProjectService {
     private final ResponsibleRepository responsibleRepository;
     private final ProjectScheduleCalculator scheduleCalculator;
     private final ProjectStatusTransition statusTransition;
+    private final ProjectScheduleRefresher scheduleRefresher;
     private final Clock clock;
 
     public ProjectService(
@@ -39,6 +40,17 @@ public final class ProjectService {
         this.scheduleCalculator = Objects.requireNonNull(scheduleCalculator);
         this.statusTransition = new ProjectStatusTransition(scheduleCalculator);
         this.clock = Objects.requireNonNull(clock);
+        this.scheduleRefresher = new ProjectScheduleRefresher(projectRepository, scheduleCalculator, clock);
+    }
+
+    /**
+     * Recalcula status e métricas dos projetos calculados antes de hoje. As leituras já chamam este
+     * método; o agendamento diário só antecipa o trabalho.
+     *
+     * @return quantidade de projetos recalculados
+     */
+    public int refreshSchedules() {
+        return scheduleRefresher.refreshStaleSchedules();
     }
 
     public Project create(SaveProjectCommand command, Actor actor) {
@@ -47,8 +59,10 @@ public final class ProjectService {
         requireMembership(command.responsibleIds(), actor);
         validateResponsibles(command.responsibleIds());
 
+        LocalDate today = LocalDate.now(clock);
         ProjectDates dates = datesFrom(command);
-        ProjectScheduleMetrics schedule = scheduleCalculator.calculate(dates, LocalDate.now(clock));
+        dates.requireActualDatesNotAfter(today);
+        ProjectScheduleMetrics schedule = scheduleCalculator.calculate(dates, today);
         Instant now = clock.instant();
         Project project = new Project(
                 UUID.randomUUID(),
@@ -57,33 +71,38 @@ public final class ProjectService {
                 dates,
                 schedule,
                 new AuditMetadata(now, now));
-        return projectRepository.save(project);
+        return projectRepository.save(project, today);
     }
 
     public Project get(UUID id) {
         Objects.requireNonNull(id, "id is required");
+        refreshSchedules();
         return projectRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + id));
     }
 
     public PageResult<Project> list(PageQuery pageQuery) {
         Objects.requireNonNull(pageQuery, "pageQuery is required");
+        refreshSchedules();
         return projectRepository.findAll(pageQuery);
     }
 
     public PageResult<Project> listByStatus(ProjectStatus status, PageQuery pageQuery) {
         Objects.requireNonNull(status, "status is required");
         Objects.requireNonNull(pageQuery, "pageQuery is required");
+        refreshSchedules();
         return projectRepository.findByStatus(status, pageQuery);
     }
 
     public PageResult<Project> search(ProjectFilter filter, PageQuery pageQuery) {
         Objects.requireNonNull(filter, "filter is required");
         Objects.requireNonNull(pageQuery, "pageQuery is required");
+        refreshSchedules();
         return projectRepository.search(filter, pageQuery);
     }
 
     public ProjectIndicators indicators() {
+        refreshSchedules();
         return projectRepository.indicators();
     }
 
@@ -95,8 +114,10 @@ public final class ProjectService {
         requireMembership(command.responsibleIds(), actor);
         validateResponsibles(command.responsibleIds());
 
+        LocalDate today = LocalDate.now(clock);
         ProjectDates dates = datesFrom(command);
-        ProjectScheduleMetrics schedule = scheduleCalculator.calculate(dates, LocalDate.now(clock));
+        dates.requireActualDatesNotAfter(today);
+        ProjectScheduleMetrics schedule = scheduleCalculator.calculate(dates, today);
         Project updated = new Project(
                 current.id(),
                 command.name(),
@@ -104,7 +125,7 @@ public final class ProjectService {
                 dates,
                 schedule,
                 new AuditMetadata(current.audit().createdAt(), clock.instant()));
-        return projectRepository.save(updated);
+        return projectRepository.save(updated, today);
     }
 
     public Project transition(UUID id, ProjectStatus requestedStatus, Actor actor) {
@@ -112,10 +133,11 @@ public final class ProjectService {
         Objects.requireNonNull(actor, "actor is required");
         Project current = get(id);
         requireMembership(current.responsibleIds(), actor);
+        LocalDate today = LocalDate.now(clock);
         ProjectTransitionResult transition = statusTransition.transition(
                 current,
                 requestedStatus,
-                LocalDate.now(clock));
+                today);
         Project updated = new Project(
                 current.id(),
                 current.name(),
@@ -123,7 +145,7 @@ public final class ProjectService {
                 transition.dates(),
                 transition.schedule(),
                 new AuditMetadata(current.audit().createdAt(), clock.instant()));
-        return projectRepository.save(updated);
+        return projectRepository.save(updated, today);
     }
 
     public void delete(UUID id, Actor actor) {

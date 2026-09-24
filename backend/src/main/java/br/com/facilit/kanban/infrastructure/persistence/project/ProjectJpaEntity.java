@@ -50,6 +50,9 @@ public class ProjectJpaEntity {
     @Column(name = "remaining_time_percentage", nullable = false)
     private short remainingTimePercentage;
 
+    @Column(name = "schedule_calculated_on", nullable = false)
+    private LocalDate scheduleCalculatedOn;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -76,6 +79,7 @@ public class ProjectJpaEntity {
             LocalDate actualEnd,
             long delayDays,
             int remainingTimePercentage,
+            LocalDate scheduleCalculatedOn,
             Instant createdAt,
             Instant updatedAt,
             Set<ResponsibleJpaEntity> responsibles) {
@@ -88,6 +92,7 @@ public class ProjectJpaEntity {
         this.actualEnd = actualEnd;
         this.delayDays = delayDays;
         this.remainingTimePercentage = (short) remainingTimePercentage;
+        this.scheduleCalculatedOn = scheduleCalculatedOn;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.responsibles.clear();
@@ -128,6 +133,10 @@ public class ProjectJpaEntity {
 
     public short getRemainingTimePercentage() {
         return remainingTimePercentage;
+    }
+
+    public LocalDate getScheduleCalculatedOn() {
+        return scheduleCalculatedOn;
     }
 
     public Instant getCreatedAt() {
