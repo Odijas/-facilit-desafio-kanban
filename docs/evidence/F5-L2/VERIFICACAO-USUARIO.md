@@ -485,13 +485,15 @@ GREEN exige todos os marcadores `F5_L2_*_GREEN`, `=== F5-L2 GREEN ===` e `Result
 
 Cada commit compila sozinho, na ordem abaixo.
 
+`[VERIFICADO: execução do usuário · 2026-09-24]` o assunto do commit com `!` deve permanecer entre aspas simples para impedir expansão de histórico pelo Bash.
+
 ```sh
 cd ~/proj/facilit-desafio-kanban
 R=backend/src/main/java/br/com/facilit/kanban/delivery/rest
 I=backend/src/test/java/br/com/facilit/kanban/integration
 
 git add backend/src ':!'$R/ApiErrorDocumentation.java ':!'$I/OpenApiContractIT.java
-git commit -m "feat(backend)!: erros de negócio 422, confirmação obrigatória, mensagens em pt-BR e logs de negócio" \
+git commit -m 'feat(backend)!: erros de negócio 422, confirmação obrigatória, mensagens em pt-BR e logs de negócio' \
   -m "BREAKING CHANGE: transição bloqueada responde 422 TRANSITION_BLOCKED (antes 400 INVALID_REQUEST); Em andamento → A iniciar e Concluído → Em andamento/Atrasado exigem confirm = true (422 CONFIRMATION_REQUIRED)."
 
 git add $R/ApiErrorDocumentation.java $I/OpenApiContractIT.java
@@ -511,4 +513,15 @@ git checkout develop
 git merge --no-ff feature/f5-l2-contrato-de-erro -m "Merge branch 'feature/f5-l2-contrato-de-erro' into develop"
 git push origin develop feature/f5-l2-contrato-de-erro
 git push gitlab develop feature/f5-l2-contrato-de-erro
+```
+
+
+## 4. Fechamento efetivo do lote
+
+```text
+[EXECUTADO PELO USUÁRIO · 2026-09-24] gate F5-L2 original GREEN (exit code 0).
+[EXECUTADO PELO USUÁRIO · 2026-09-24] correção auditável da granularidade: 87fa002 → a91cc32 → 009b432; árvores BASE/FIX idênticas.
+[EXECUTADO PELO USUÁRIO · 2026-09-24] gate reexecutado: F5_L2_REVALIDADO_GREEN, exit code 0.
+[EXECUTADO PELO USUÁRIO · 2026-09-24] evidência persistida em f7e17b5 e branch corretiva integrada em develop por 7a28996; origin/develop e gitlab/develop sincronizados.
+[VERIFICADO] F5-L2 encerrado; próximo lote permitido: F5-L3.
 ```

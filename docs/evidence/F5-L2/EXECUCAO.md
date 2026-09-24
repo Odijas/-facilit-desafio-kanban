@@ -61,3 +61,41 @@ Data: 2026-09-24
 [NÃO EXECUTADO] mvn clean verify (Maven Central 403; sem JDK 25): compilação dos tratadores REST/GraphQL, ApiErrorDocumentation,
   RestExceptionHandlerTest, OpenApiContractIT, ITs e o log real no contêiner. Resolve: gate local (VERIFICACAO-USUARIO.md).
 ```
+
+
+## Gate local e correção auditável da granularidade do histórico
+
+```text
+[EXECUTADO PELO USUÁRIO · 2026-09-24] gate F5-L2 completo: frontend 33/33; backend 91 unitários + 20 integração; Docker V1-V6; API 18 verificações; OpenAPI 23 operações; 11 eventos de negócio sem e-mail/senha; === F5-L2 GREEN ===; Resultado: exit code 0.
+
+[VERIFICADO: saída do shell e commit 8177c8e · 2026-09-24] o comando do primeiro commit granular falhou com "unrecognized history modifier" por causa de `!` no assunto entre aspas duplas. Os 43 arquivos de backend permaneceram staged e foram absorvidos pelo commit seguinte, que passou a conter 45 arquivos (43 backend + ApiErrorDocumentation.java + OpenApiContractIT.java).
+
+[EXECUTADO PELO USUÁRIO · 2026-09-24] correção sem force-push e sem reescrita de histórico publicado, na branch fix/f5-l2-historico-granular:
+  87fa002 Revert "docs(api): documenta os erros de cada operação no OpenAPI"
+  a91cc32 feat(backend)!: erros de negócio 422, confirmação obrigatória, mensagens em pt-BR e logs de negócio
+  009b432 docs(api): documenta os erros de cada operação no OpenAPI
+
+[EXECUTADO PELO USUÁRIO · 2026-09-24] prova de equivalência:
+  BASE_TREE=122f2449c0bd7f588ea43ee57e795389a058b8c3
+  FIX_TREE=122f2449c0bd7f588ea43ee57e795389a058b8c3
+  ARVORE_EQUIVALENTE_GREEN
+
+[EXECUTADO PELO USUÁRIO · 2026-09-24] gate F5-L2 reexecutado em worktree temporário reconstruído sobre 5e3781b:
+  arquivos_reconstruidos=63
+  F5_L2_PRECONDITIONS_GREEN
+  F5_L2_FRONTEND_GREEN
+  F5_L2_BACKEND_GREEN
+  F5_L2_STATIC_GREEN
+  F5_L2_DOCKER_GREEN
+  F5_L2_API_GREEN
+  F5_L2_OPENAPI_GREEN
+  F5_L2_BUSINESS_LOGS_GREEN
+  === F5-L2 GREEN ===
+  Resultado: exit code 0
+  GATE_EXIT=0
+  F5_L2_REVALIDADO_GREEN
+```
+
+[EXECUTADO PELO USUÁRIO · 2026-09-24] a saída integral da revalidação foi preservada em `docs/evidence/F5-L2/SAIDA-GATE-HISTORICO.txt` no commit `f7e17b5` e promovida a `develop` pelo merge `7a28996`.
+
+[VERIFICADO: saída do usuário · 2026-09-24] após o merge, `develop`, `origin/develop` e `gitlab/develop` apontam para `7a28996ef2c28189ae84d4c8498c12c70fcb364f`, com working tree limpa.
