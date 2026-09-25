@@ -2,7 +2,7 @@
 
 Data: 2026-09-25
 
-Estado: **CANDIDATE** (freeze a executar).
+Estado: **GREEN** (freeze em 2026-09-25; saída em `SAIDA-GATE.txt`). A release e a verificação pública vêm depois do freeze e ficam registradas em `SAIDA-RELEASE.txt`, na `develop`.
 
 Escopo: lote F5-P3 de `docs/governance/PLANO-CORRECAO-RELEASE-2.0.1.md`. Cobre o freeze da `hotfix/2.0.1`, a release `v2.0.1` (Gitflow de hotfix), a verificação pública e o pacote da auditoria final.
 

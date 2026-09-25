@@ -320,6 +320,7 @@ Estado dos lotes:
 - F5-C3 — Documentação de entrega (coleção com os indicadores da Etapa 3, AI_USAGE com a F5, CHANGELOG e auditoria final): GREEN em 2026-09-24.
 - F5-P1 — Swagger com exemplos em todas as operações e busca por texto literal, na `hotfix/2.0.1` conforme `docs/governance/PLANO-CORRECAO-RELEASE-2.0.1.md`: GREEN em 2026-09-25.
 - F5-P2 — Documentação coerente com a tag (estado das releases, paginação, interpretações, AI_USAGE, CHANGELOG e evidências do F5-L5): GREEN em 2026-09-25.
+- F5-P3 — Freeze da `hotfix/2.0.1` e release `v2.0.1`: freeze GREEN em 2026-09-25 (`docs/evidence/F5-P3/SAIDA-GATE.txt`); a tag `v2.0.1` marca o merge desta versão na `main`, e a verificação pública fica em `docs/evidence/F5-P3/SAIDA-RELEASE.txt`, na `develop`.
 
 ### Resumo por lote
 
