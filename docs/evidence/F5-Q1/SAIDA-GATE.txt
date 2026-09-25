@@ -1,0 +1,22 @@
+=== PRÉ-CONDIÇÕES E ESCOPO ===
+   escopo exato: 27 arquivos
+   versão 2.0.2 em pom.xml, Dockerfile e package.json
+F5_Q1_SCOPE_GREEN
+=== BACKEND: CLEAN VERIFY ===
+   unitários/BDD: 25 classes, 177 testes, 0 falhas/erros/ignorados
+   integração: 12 classes, 52 testes, 0 falhas/erros/ignorados
+   teste presente e executado: updateCanClearActualStartWithoutTransitionConfirmationAndRecalculatesStatus
+   teste presente e executado: line02WithMissingPlannedDatesExplainsWhatMustBeProvidedWithoutNullText
+   teste presente e executado: line11WhenRecalculatedAsNotStartedAsksForActualStart
+   teste presente e executado: errorExamplesMatchTheOperationResourceInputAndAuthorizationRule
+   JaCoCo linhas: 1716/1803 = 95.17%
+   BDD: 12 cenários GREEN
+F5_Q1_BACKEND_GREEN
+=== DOCKER: BANCO NOVO + API REAL ===
+   migrations V1 2 3 4 5 6 7 em banco novo
+   /api-docs: exemplos de 400/403/404 coerentes por operação
+   404 real de secretaria = exemplo do OpenAPI
+   422 linha 2 sem "null" e com orientação de plannedStart/plannedEnd
+F5_Q1_DOCKER_API_GREEN
+=== F5-Q1 GREEN ===
+Resultado: exit code 0
