@@ -43,6 +43,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 public class ProjectPersistenceAdapter implements ProjectRepository {
 
+    /** Escape do LIKE: o texto da busca é literal, então {@code %}, {@code _} e a própria barra não são curingas. */
+    private static final char LIKE_ESCAPE = '\\';
+
     /** Projeto concluído não muda com o tempo (término realizado → Concluído, 0 dia, 0%). */
     private static final Set<ProjectStatus> STATUSES_THAT_CHANGE_OVER_TIME =
             EnumSet.complementOf(EnumSet.of(ProjectStatus.COMPLETED));
@@ -251,10 +254,19 @@ public class ProjectPersistenceAdapter implements ProjectRepository {
             if (filter.text() != null) {
                 predicates.add(builder.like(
                         builder.lower(root.<String>get("name")),
-                        builder.lower(builder.literal("%" + filter.text() + "%"))));
+                        builder.lower(builder.literal(containsPattern(filter.text()))),
+                        LIKE_ESCAPE));
             }
             return builder.and(predicates.toArray(Predicate[]::new));
         };
+    }
+
+    private static String containsPattern(String text) {
+        String literal = text
+                .replace(String.valueOf(LIKE_ESCAPE), String.valueOf(LIKE_ESCAPE) + LIKE_ESCAPE)
+                .replace("%", LIKE_ESCAPE + "%")
+                .replace("_", LIKE_ESCAPE + "_");
+        return "%" + literal + "%";
     }
 
     private static PageRequest pageable(PageQuery pageQuery) {

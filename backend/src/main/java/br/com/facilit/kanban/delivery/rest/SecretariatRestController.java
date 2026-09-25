@@ -4,9 +4,11 @@ import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
 import br.com.facilit.kanban.application.secretariat.SaveSecretariatCommand;
 import br.com.facilit.kanban.application.secretariat.SecretariatService;
+import br.com.facilit.kanban.delivery.common.ApiExamples;
 import br.com.facilit.kanban.domain.secretariat.Secretariat;
 import br.com.facilit.kanban.infrastructure.security.AuthenticatedActorResolver;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -49,14 +51,16 @@ public class SecretariatRestController {
     }
 
     @GetMapping("/{id}")
-    public SecretariatResponse get(@PathVariable UUID id) {
+    public SecretariatResponse get(@Parameter(description = "Id da secretaria", example = ApiExamples.SECRETARIAT_ID) @PathVariable UUID id) {
         return SecretariatResponse.from(service.get(id));
     }
 
     @GetMapping
     @Operation(summary = "Lista secretarias com paginação")
     public PageResponse<SecretariatResponse> list(
+            @Parameter(description = "Página, a partir de 0", example = "0")
             @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Itens por página", example = "20")
             @RequestParam(defaultValue = "20") int size) {
         PageResult<Secretariat> result = service.list(new PageQuery(page, size));
         return new PageResponse<>(
@@ -71,7 +75,7 @@ public class SecretariatRestController {
 
     @PutMapping("/{id}")
     public SecretariatResponse update(
-            @PathVariable UUID id,
+            @Parameter(description = "Id da secretaria", example = ApiExamples.SECRETARIAT_ID) @PathVariable UUID id,
             @Valid @RequestBody SecretariatRequest request,
             Principal principal) {
         return SecretariatResponse.from(service.update(
@@ -81,7 +85,7 @@ public class SecretariatRestController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id, Principal principal) {
+    public ResponseEntity<Void> delete(@Parameter(description = "Id da secretaria", example = ApiExamples.SECRETARIAT_ID) @PathVariable UUID id, Principal principal) {
         service.delete(id, actorResolver.resolve(principal));
         return ResponseEntity.noContent().build();
     }

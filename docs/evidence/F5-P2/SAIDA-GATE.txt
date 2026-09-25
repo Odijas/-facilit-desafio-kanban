@@ -1,0 +1,27 @@
+=== PRÉ-CONDIÇÕES ===
+   19 arquivos alterados, todos do pacote F5-P2; só documentação
+   branch bugfix/2.0.1-p2-docs sobre a hotfix/2.0.1 com o F5-P1 (8f5d482)
+F5_P2_PRECONDITIONS_GREEN
+=== DOCUMENTAÇÃO ===
+   19 arquivos do lote OK; frases antigas removidas; 38 links e caminhos resolvidos; testes citados existem; F5-P1 e F5-L5 GREEN
+F5_P2_DOCS_GREEN
+=== HISTÓRICO: CONVENTIONAL COMMITS DESDE A v2.0.0 ===
+   d0ba84c docs(F5-P1): plano da patch release 2.0.1 e evidências do lote
+   1817c74 fix(filtros): trata %, _ e \ do texto de busca como caracteres literais
+   f10bd2e fix(api): documenta exemplos de parâmetros, corpos e respostas em todas as operações do Swagger
+   891b31c build(hotfix): define a versão 2.0.1
+   4 commits sem merge desde a v2.0.0, todos em Conventional Commits
+F5_P2_HISTORY_GREEN
+=== AVISO ANTECIPADO: SOBREPOSIÇÃO COM A develop (back-merge do F5-P3) ===
+   develop desde a v2.0.0: docs/evidence/F5/SAIDA-RELEASE.txt, docs/evidence/F5/VERIFICACAO-RELEASE.md
+   sem sobreposição com a hotfix
+=== CI DA hotfix/2.0.1 COM O F5-P1 ===
+   [1] 8f5d482 in_progress:None 36131837374
+   [2] 8f5d482 in_progress:None 36131837374
+   [3] 8f5d482 in_progress:None 36131837374
+   [4] 8f5d482 in_progress:None 36131837374
+   [5] 8f5d482 completed:success 36131837374
+   jobs frontend/backend/repository: success · passo 'Imagem Docker do backend (mesmo build do docker compose)': success · https://github.com/Odijas/facilit-desafio-kanban/actions/runs/36131837374/job/108060645671
+F5_P1_CI_GREEN
+=== F5-P2 GREEN ===
+Resultado: exit code 0

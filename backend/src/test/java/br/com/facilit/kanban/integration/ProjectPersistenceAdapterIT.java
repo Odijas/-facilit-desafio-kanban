@@ -145,6 +145,22 @@ class ProjectPersistenceAdapterIT {
     }
 
     @Test
+    void searchTreatsPercentUnderscoreAndBackslashInTheTextAsLiterals() {
+        UUID responsible = responsible(null);
+        for (String name : List.of("Meta 100%", "Meta 1000", "Lote_A", "LoteXA", "Pasta C:\\docs", "Pasta C:docs")) {
+            saved(name, responsible, ProjectStatus.NOT_STARTED, TODAY);
+        }
+        clearPersistenceContext();
+
+        assertThat(namesMatching("100%")).containsExactly("Meta 100%");
+        assertThat(namesMatching("%")).containsExactly("Meta 100%");
+        assertThat(namesMatching("lote_a")).containsExactly("Lote_A");
+        assertThat(namesMatching("_")).containsExactly("Lote_A");
+        assertThat(namesMatching("c:\\d")).containsExactly("Pasta C:\\docs");
+        assertThat(namesMatching("meta")).containsExactlyInAnyOrder("Meta 100%", "Meta 1000");
+    }
+
+    @Test
     void indicatorsCountAndAverageDelayByStatus() {
         UUID responsible = responsible(null);
         adapter.save(project("Atrasado 2", Set.of(responsible),
@@ -167,6 +183,13 @@ class ProjectPersistenceAdapterIT {
                 new ProjectStatusIndicator(ProjectStatus.IN_PROGRESS, 1, 0),
                 new ProjectStatusIndicator(ProjectStatus.OVERDUE, 2, 3),
                 new ProjectStatusIndicator(ProjectStatus.COMPLETED, 0, 0));
+    }
+
+    private List<String> namesMatching(String text) {
+        return adapter.search(new ProjectFilter(null, null, null, null, null, text), new PageQuery(0, 20)).content()
+                .stream()
+                .map(Project::name)
+                .toList();
     }
 
     private Project saved(String name, UUID responsible, ProjectStatus status, LocalDate calculatedOn) {

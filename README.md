@@ -98,6 +98,8 @@ Pontos que o documento do desafio não define, com a escolha feita e onde ela é
 | Linha "A iniciar → Atrasado" | com o status de hoje, nunca resulta em sucesso: se o início previsto já passou, o projeto já está Atrasado; se não passou, a tabela manda bloquear | `ProjectStatusTransitionTest.blocksNotStartedToOverdueBeforePlannedStart`, `blocksNotStartedToOverdueOnPlannedStartBecauseDatesStillClassifyAsNotStarted`, `treatsStaleNotStartedAsOverdueOnceThePlannedStartHasPassed` |
 | "Confirmações obrigatórias" (Etapa 2) | a transição cuja ação automática apaga uma data registrada só é aplicada com `confirm: true` no corpo do `PATCH /api/v1/projects/{id}/status` ou no argumento da mutation `transitionProject`: Em andamento → A iniciar apaga o início realizado; Concluído → Em andamento ou Atrasado apaga o término realizado. A confirmação só é pedida quando a transição passaria; se a tabela bloqueia, o bloqueio vem primeiro. Na UI, o quadro abre um diálogo com a mensagem do servidor | `ProjectStatusTransitionTest.line04*`, `line11*`, `line12*`; `ProjectServiceTest.clearsRecordedActualStartOnlyWithExplicitConfirmation`; `KanbanBoard.test.tsx` |
 | Erro de regra de negócio × erro de entrada | entrada malformada ou fora do formato: 400 (`VALIDATION_ERROR`, `INVALID_REQUEST`); dado bem formado que viola regra do domínio: 422 (`BUSINESS_RULE_VIOLATION`, `TRANSITION_BLOCKED`, `CONFIRMATION_REQUIRED`) | `RestExceptionHandlerTest` |
+| Edição das datas (`PUT`) × tabela de transição | a tabela e as confirmações valem para a mudança de status pedida (`PATCH /api/v1/projects/{id}/status` e `transitionProject`). O `PUT` edita as datas, e o status é recalculado a partir delas, sem confirmação: quem apaga uma data realizada pelo `PUT` está corrigindo o dado, não pedindo uma transição | `ProjectServiceTest.createsReadsListsUpdatesAndDeletesProjectWithRecalculatedMetrics` |
+| Transição que depende do término previsto, com ele vazio (linhas 1, 11 e 12) | 422 `BUSINESS_RULE_VIOLATION` pedindo o `plannedEnd`, e não `TRANSITION_BLOCKED`: depois da ação automática, falta um dado obrigatório para classificar o projeto; não é a tabela que recusa | `ProjectStatusTransitionTest.line01RequiresPlannedEndToClassifyTheStartedProject` |
 | % de tempo restante | arredondado para o inteiro mais próximo; 100% antes do início previsto | `ProjectScheduleCalculatorTest.capsRemainingPercentageAtOneHundredBeforePlannedStart` |
 
 ## Como rodar (Docker)
@@ -190,7 +192,7 @@ Coleção de API ([`docs/api/facilit-kanban.postman_collection.json`](docs/api/f
 
 ## API: Swagger, GraphQL e erros
 
-- OpenAPI com exemplos e schemas em `/api-docs`; Swagger UI em `/swagger-ui.html`.
+- OpenAPI em `/api-docs`, com schemas e exemplos de parâmetros, corpos e respostas em todas as operações (verificado por `OpenApiContractIT`); Swagger UI em `/swagger-ui.html`.
 - GraphQL (`backend/src/main/resources/graphql/*.graphqls`) sobre os mesmos casos de uso do REST: consultas de projetos com os mesmos filtros, indicadores, CRUD e transição. As páginas GraphQL trazem `page`, `size`, `totalPages`, `hasNext` e `hasPrevious`; o total de itens (`totalElements`) só existe no REST.
 - Indicadores adicionais: `GET /api/v1/indicators/projects/by-secretariat`, `/by-responsible` e `/deadlines?withinDays=7` (`withinDays` entre 1 e 90). O GraphQL expõe `projectIndicatorsBySecretariat`, `projectIndicatorsByResponsible` e `projectDeadlines`.
 - Erros REST em `ProblemDetail` (`application/problem+json`) com `code` estável e mensagem em pt-BR:
@@ -210,8 +212,9 @@ Coleção de API ([`docs/api/facilit-kanban.postman_collection.json`](docs/api/f
 
   No GraphQL, o mesmo código vai em `extensions.code`. O Swagger documenta os erros de cada operação com exemplos (`ApiErrorDocumentation`, verificado por `OpenApiContractIT`).
 - Logs de negócio (`evento=projeto.criado|atualizado|transicao|transicao.recusada|excluido`, `responsavel.*`, `secretaria.*`, `credencial.*`, `projeto.status.recalculado`) em formato `chave=valor`, só com ids, status e perfil do ator, sem nome nem e-mail.
-- Paginação por `page`/`size` em todas as listagens.
+- Paginação por `page`/`size` nas listagens de projetos, responsáveis e secretarias. Os indicadores agrupados e os prazos são agregados e não paginam.
 - Limites de entrada, iguais em REST e GraphQL (`InputLimits`, `ProjectFilter`): nome de projeto, responsável e secretaria e cargo até 200 caracteres; e-mail até 254; de 1 a 50 responsáveis por projeto → 400 `VALIDATION_ERROR` (no Swagger, `maxLength`/`maxItems`). Texto de busca até 100 caracteres → 400 `INVALID_REQUEST`, como os demais filtros. O banco guarda `TEXT`; o limite fica na borda da API.
+- Busca por texto (`text`, REST e GraphQL): trecho do nome, sem diferenciar maiúsculas. `%`, `_` e `\` são procurados como caracteres comuns, não como curingas.
 
 ## Segurança
 
@@ -283,7 +286,7 @@ O uso de IA no desenvolvimento está descrito em [`AI_USAGE.md`](AI_USAGE.md). A
 
 ## Governança e histórico de entrega
 
-Governança em `docs/governance`: `PROMPT-EXECUTIVO-BASE-v1.1.md`, `PROMPT-EXECUTIVO-KANBAN-v1.0.md`, `REPLANEJAMENTO-F3.md`, `PLANO-CONFORMIDADE-F5.md` e `PLANO-CORRECAO-RELEASE-2.0.0.md`. Cada lote gera o Pacote Anti-Alucinação (livro-razão, fontes, decisões, consumidores, matriz requisito → implementação → teste → evidência, riscos e gate) em `docs/evidence/<LOTE>/`. A auditoria independente de aderência ao desafio que originou os lotes F5-C está em `docs/evidence/F5/ADERENCIA-FINAL.md`.
+Governança em `docs/governance`: `PROMPT-EXECUTIVO-BASE-v1.1.md`, `PROMPT-EXECUTIVO-KANBAN-v1.0.md`, `REPLANEJAMENTO-F3.md`, `PLANO-CONFORMIDADE-F5.md`, `PLANO-CORRECAO-RELEASE-2.0.0.md` e `PLANO-CORRECAO-RELEASE-2.0.1.md`. Cada lote gera o Pacote Anti-Alucinação (livro-razão, fontes, decisões, consumidores, matriz requisito → implementação → teste → evidência, riscos e gate) em `docs/evidence/<LOTE>/`. As auditorias de aderência ao desafio (análise própria confrontada com um agente independente) estão em `docs/evidence/F5/ADERENCIA-FINAL.md`, sobre a release candidata e origem dos lotes F5-C, e em `docs/evidence/F5/ADERENCIA-V2.0.0.md`, sobre a tag `v2.0.0` e origem dos lotes F5-P.
 
 Histórico Git: os lotes de F2-L1 a F3-L4 foram commitados depois dos gates, reconstruídos por lote a partir dos pacotes verificados (`docs/evidence/F3-L4/RECONSTRUCAO-HISTORICO.md`), com a data do dia da reconstrução. Do F4 em diante, cada lote tem commits granulares no momento da entrega, em Gitflow (`feature/*` ou `bugfix/*` → `merge --no-ff`).
 
@@ -306,15 +309,18 @@ Estado dos lotes:
 - F3-L3 — Observabilidade: GREEN em 2026-09-23.
 - F3-L4 — Engenharia de entrega: GREEN em 2026-09-23 (gate local, histórico por lote, migração para o GitHub e primeiro pipeline verde).
 - F3 — Diferenciais: GREEN em 2026-09-23.
-- F4 — Freeze e release `v1.0.0`: evidências em `docs/evidence/F4/` (auditoria requisito → implementação → teste → evidência, revisão de segurança, saída do gate de freeze).
+- F4 — Freeze e release `v1.0.0`: GREEN em 2026-09-23. Evidências em `docs/evidence/F4/` (auditoria requisito → implementação → teste → evidência, revisão de segurança, saída do gate de freeze).
 - F5-L1 — Regras sempre corretas (status de hoje, fuso, datas realizadas): GREEN em 2026-09-24.
 - F5-L2 — Contrato de erro, confirmações, Swagger e logs: GREEN em 2026-09-24.
 - F5-L3 — Camadas de teste completas e transação por caso de uso: GREEN em 2026-09-24.
 - F5-L4 — Etapa 3, BDD e cobertura: GREEN em 2026-09-24.
-- F5-L5 — Release `v2.0.0`: roteiro, auditoria e gates em `docs/evidence/F5/`; a tag só é criada após o freeze GREEN.
+- F5-L5 — Release `v2.0.0`: GREEN em 2026-09-24 (freeze e verificação pública da tag). Roteiro, auditoria e gates em `docs/evidence/F5/`.
 - F5-C1 — Entrega executável (build da imagem do backend e CSRF no Swagger UI), correção na `release/2.0.0` conforme `docs/governance/PLANO-CORRECAO-RELEASE-2.0.0.md`: GREEN em 2026-09-24.
 - F5-C2 — Rigor de testes e validação (métricas linha a linha no BDD e limites de tamanho nas entradas): GREEN em 2026-09-24.
 - F5-C3 — Documentação de entrega (coleção com os indicadores da Etapa 3, AI_USAGE com a F5, CHANGELOG e auditoria final): GREEN em 2026-09-24.
+- F5-P1 — Swagger com exemplos em todas as operações e busca por texto literal, na `hotfix/2.0.1` conforme `docs/governance/PLANO-CORRECAO-RELEASE-2.0.1.md`: GREEN em 2026-09-25.
+- F5-P2 — Documentação coerente com a tag (estado das releases, paginação, interpretações, AI_USAGE, CHANGELOG e evidências do F5-L5): GREEN em 2026-09-25.
+- F5-P3 — Freeze da `hotfix/2.0.1` e release `v2.0.1`: freeze GREEN em 2026-09-25 (`docs/evidence/F5-P3/SAIDA-GATE.txt`); a tag `v2.0.1` marca o merge desta versão na `main`, e a verificação pública fica em `docs/evidence/F5-P3/SAIDA-RELEASE.txt`, na `develop`.
 
 ### Resumo por lote
 
@@ -409,3 +415,9 @@ O F5-L1 corrige o principal desvio da v1.0.0 em relação ao desafio: status, di
 - `ProjectIndicatorsIT` cobre os contratos e validações da Etapa 3;
 - Cucumber/JUnit Platform formaliza as 12 linhas da tabela de transição em Gherkin pt-BR;
 - JaCoCo integrado ao `mvn clean verify`, sem exclusões artificiais, com mínimo global de 95% de linhas; a medição de fechamento atingiu 95,61%.
+
+### F5-P1 — Swagger com exemplos e busca literal (patch 2.0.1)
+
+- exemplos em todos os parâmetros, corpos e respostas de sucesso das 26 operações REST, com os mesmos ids fictícios entre recursos (`ApiExamples`); o exemplo dos itens de listas entra por `ApiListExampleDocumentation`;
+- `OpenApiContractIT` recusa operação sem exemplo e aponta o campo;
+- a busca por texto trata `%`, `_` e `\` como caracteres comuns (`LIKE … ESCAPE`), com teste de integração no PostgreSQL.
