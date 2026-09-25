@@ -64,10 +64,17 @@ class ProjectServiceTest {
         assertThat(created.status()).isEqualTo(ProjectStatus.NOT_STARTED);
         assertThat(created.remainingTimePercentage()).isEqualTo(100);
         assertThat(service.get(created.id())).isEqualTo(created);
-        assertThat(service.list(new PageQuery(0, 20)).content()).containsExactly(created);
-        assertThat(service.listByStatus(ProjectStatus.NOT_STARTED, new PageQuery(0, 20)).content())
+        assertThat(service.search(new ProjectFilter(null, null, null, null, null, null), new PageQuery(0, 20)).content())
                 .containsExactly(created);
-        assertThat(service.listByStatus(ProjectStatus.IN_PROGRESS, new PageQuery(0, 20)).content())
+        assertThat(service.search(
+                        new ProjectFilter(ProjectStatus.NOT_STARTED, null, null, null, null, null),
+                        new PageQuery(0, 20))
+                .content())
+                .containsExactly(created);
+        assertThat(service.search(
+                        new ProjectFilter(ProjectStatus.IN_PROGRESS, null, null, null, null, null),
+                        new PageQuery(0, 20))
+                .content())
                 .isEmpty();
 
         Project updated = service.update(created.id(), command(TODAY), Actor.admin());
@@ -158,6 +165,17 @@ class ProjectServiceTest {
                 .isInstanceOf(BusinessRuleException.class)
                 .hasMessageStartingWith("Término realizado (2026-09-23) não pode ser posterior a hoje (2026-09-22)");
         assertThat(service.get(created.id())).isEqualTo(created);
+    }
+
+    @Test
+    void updateCanClearActualStartWithoutTransitionConfirmationAndRecalculatesStatus() {
+        Project started = service.create(command(TODAY), Actor.admin());
+        assertThat(started.status()).isEqualTo(ProjectStatus.IN_PROGRESS);
+
+        Project updated = service.update(started.id(), command(null), Actor.admin());
+
+        assertThat(updated.dates().actualStart()).isNull();
+        assertThat(updated.status()).isEqualTo(ProjectStatus.NOT_STARTED);
     }
 
     @Test

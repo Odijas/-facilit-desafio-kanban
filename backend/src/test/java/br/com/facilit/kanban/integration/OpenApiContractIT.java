@@ -2,7 +2,9 @@ package br.com.facilit.kanban.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -161,6 +163,74 @@ class OpenApiContractIT {
     }
 
     @Test
+    void errorExamplesMatchTheOperationResourceInputAndAuthorizationRule() {
+        JsonNode docs = apiDocs();
+
+        for (Map.Entry<String, JsonNode> path : docs.path("paths").properties()) {
+            if (!path.getKey().startsWith("/api/v1/")) {
+                continue;
+            }
+            for (Map.Entry<String, JsonNode> method : path.getValue().properties()) {
+                if (!HTTP_METHODS.contains(method.getKey())) {
+                    continue;
+                }
+                String operation = method.getKey().toUpperCase(Locale.ROOT) + " " + path.getKey();
+                JsonNode operationNode = method.getValue();
+
+                if (operationNode.has("requestBody")) {
+                    String field = validationField(docs, path.getKey(), method.getKey());
+                    assertThat(requestBodySchema(docs, operationNode).path("properties").has(field))
+                            .as("%s: campo do exemplo 400 precisa existir no schema do corpo", operation)
+                            .isTrue();
+                }
+
+                if (path.getKey().contains("{id}")
+                        && operationNode.path("responses").has("404")) {
+                    String detail = errorExample(docs, path.getKey(), method.getKey(), "404", "RESOURCE_NOT_FOUND")
+                            .path("detail").asText();
+                    String expectedPrefix = expectedNotFoundPrefix(path.getKey(), method.getKey());
+                    assertThat(detail).as(operation + " 404").startsWith(expectedPrefix);
+                }
+
+                if ((path.getKey().startsWith("/api/v1/responsibles")
+                                || path.getKey().startsWith("/api/v1/secretariats"))
+                        && operationNode.path("responses").has("403")) {
+                    assertThat(errorExample(docs, path.getKey(), method.getKey(), "403", "FORBIDDEN")
+                                    .path("detail").asText()
+                                    .toLowerCase(Locale.ROOT))
+                            .as(operation + " 403")
+                            .doesNotContain("projeto");
+                }
+            }
+        }
+
+        assertThat(errorExample(
+                                docs,
+                                "/api/v1/indicators/projects/deadlines",
+                                "get",
+                                "400",
+                                "INVALID_REQUEST")
+                        .path("detail").asText())
+                .isEqualTo("withinDays deve estar entre 1 e 90.");
+        assertThat(errorExample(docs, "/api/v1/projects", "get", "400", "INVALID_REQUEST")
+                        .path("detail").asText())
+                .isEqualTo("Tamanho de página inválido: size deve estar entre 1 e 100.");
+
+        assertThat(errorExample(docs, "/api/v1/responsibles", "post", "403", "FORBIDDEN")
+                        .path("detail").asText())
+                .isEqualTo("Apenas o administrador pode realizar esta operação.");
+        assertThat(errorExample(docs, "/api/v1/secretariats", "post", "403", "FORBIDDEN")
+                        .path("detail").asText())
+                .isEqualTo("Apenas o administrador pode realizar esta operação.");
+        assertThat(errorExample(docs, "/api/v1/projects/{id}", "put", "403", "FORBIDDEN")
+                        .path("detail").asText())
+                .isEqualTo("O responsável só pode alterar projetos em que é responsável.");
+        assertThat(errorExample(docs, "/api/v1/projects/{id}", "get", "403", "FORBIDDEN")
+                        .path("detail").asText())
+                .isEqualTo("Acesso negado.");
+    }
+
+    @Test
     void swaggerUiSendsTheCsrfTokenFromTheCookie() {
         // Com springdoc.swagger-ui.csrf.enabled, o springdoc injeta no swagger-initializer.js um requestInterceptor
         // que copia o cookie XSRF-TOKEN para o cabeçalho X-XSRF-TOKEN em chamadas da mesma origem.
@@ -172,6 +242,94 @@ class OpenApiContractIT {
                 .contains("requestInterceptor")
                 .contains("XSRF-TOKEN=")
                 .contains("request.headers['X-XSRF-TOKEN']");
+    }
+
+    private static JsonNode errorExample(
+            JsonNode docs,
+            String path,
+            String method,
+            String status,
+            String code) {
+        return docs.path("paths")
+                .path(path)
+                .path(method)
+                .path("responses")
+                .path(status)
+                .path("content")
+                .path(PROBLEM_JSON)
+                .path("examples")
+                .path(code)
+                .path("value");
+    }
+
+    private static String validationField(JsonNode docs, String path, String method) {
+        return validationExample(docs, path, method)
+                .path("violations")
+                .path(0)
+                .path("field")
+                .asText();
+    }
+
+    private static JsonNode validationExample(JsonNode docs, String path, String method) {
+        JsonNode problemContent = docs.path("paths")
+                .path(path)
+                .path(method)
+                .path("responses")
+                .path("400")
+                .path("content")
+                .path(PROBLEM_JSON);
+        JsonNode named = problemContent.path("examples").path("VALIDATION_ERROR").path("value");
+        if (!named.isMissingNode()) {
+            return parseExample(named);
+        }
+        JsonNode direct = problemContent.path("example");
+        if (!direct.isMissingNode()) {
+            return parseExample(direct);
+        }
+        for (JsonNode example : problemContent.path("examples")) {
+            JsonNode value = parseExample(example.path("value"));
+            if ("VALIDATION_ERROR".equals(value.path("code").asText())) {
+                return value;
+            }
+        }
+        return named;
+    }
+
+    private static JsonNode parseExample(JsonNode example) {
+        if (!example.isTextual()) {
+            return example;
+        }
+        try {
+            return new ObjectMapper().readTree(example.asText());
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Exemplo OpenAPI não contém JSON válido", exception);
+        }
+    }
+
+    private static JsonNode requestBodySchema(JsonNode docs, JsonNode operation) {
+        JsonNode schema = operation.path("requestBody").path("content").path("application/json").path("schema");
+        if (!schema.has("$ref")) {
+            return schema;
+        }
+        String ref = schema.path("$ref").asText();
+        String name = ref.substring(ref.lastIndexOf('/') + 1);
+        return docs.path("components").path("schemas").path(name);
+    }
+
+    private static String expectedNotFoundPrefix(String path, String method) {
+        if ("/api/v1/responsibles/{id}/credentials".equals(path) && "delete".equals(method)) {
+            return "Credencial não encontrada para o responsável:";
+        }
+        if (path.startsWith("/api/v1/projects")) {
+            return "Projeto não encontrado:";
+        }
+        if (path.startsWith("/api/v1/responsibles")) {
+            return "Responsável não encontrado:";
+        }
+        if (path.startsWith("/api/v1/secretariats")) {
+            return "Secretaria não encontrada:";
+        }
+        throw new IllegalArgumentException("Path com {id} não reconhecido no contrato: " + path);
     }
 
     private static void checkContent(String where, JsonNode content, JsonNode schemas, List<String> missing) {
