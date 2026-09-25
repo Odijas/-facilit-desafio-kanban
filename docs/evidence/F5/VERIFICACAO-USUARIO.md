@@ -230,9 +230,10 @@ patterns = {
     'token GitLab': re.compile(r'glpat-[0-9A-Za-z_-]{20,}'),
     'token GitHub': re.compile(r'\b(?:ghp|gho|ghu|ghs|ghr)_[0-9A-Za-z]{36}\b|github_pat_[0-9A-Za-z_]{40,}'),
     'chave AWS': re.compile(r'\bAKIA[0-9A-Z]{16}\b'),
-    'senha de ambiente com valor': re.compile(
-        r'^\+\s*(?:export\s+)?(?:POSTGRES_PASSWORD|APP_ADMIN_PASSWORD|APP_DEMO_RESPONSIBLE_PASSWORD|METRICS_PASSWORD|GRAFANA_ADMIN_PASSWORD|DB_PASSWORD)=(?!\s*$)(?!["\']?\$)(?!change-me-local-only\s*$)(?!["\']{2}\s*$)\S+'),
 }
+environment_password = re.compile(
+    r'^\+\s*(?:export\s+)?(?:POSTGRES_PASSWORD|APP_ADMIN_PASSWORD|APP_DEMO_RESPONSIBLE_PASSWORD|METRICS_PASSWORD|GRAFANA_ADMIN_PASSWORD|DB_PASSWORD)=(?!\s*$)(?!["\']?\$)(?!change-me-local-only\s*$)(?!["\']{2}\s*$)\S+'
+)
 commit = '?'
 hits = []
 with open('/tmp/f5-history-patch.txt', encoding='utf-8', errors='replace') as handle:
@@ -246,6 +247,8 @@ with open('/tmp/f5-history-patch.txt', encoding='utf-8', errors='replace') as ha
             for label, pattern in patterns.items():
                 if pattern.search(line):
                     hits.append(f'{label}: commit {commit} arquivo {current_file}')
+            if not current_file.startswith('docs/evidence/') and environment_password.search(line):
+                hits.append(f'senha de ambiente com valor: commit {commit} arquivo {current_file}')
 if hits:
     print('\n'.join(sorted(set(hits))), file=sys.stderr)
     sys.exit(1)

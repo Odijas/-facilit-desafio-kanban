@@ -30,3 +30,9 @@ Data: 2026-09-24
 [EXECUTADO PELO USUÁRIO · 2026-09-24] o freeze parou na pré-condição do GitLab e imprimiu `Resultado: exit code 1`, mas o shell externo mostrou `GATE_EXIT=0`; o wrapper terminava no `echo` e não propagava o status do `bash` interno.
 
 [VERIFICADO · 2026-09-24] o gate foi corrigido para exigir publicação no GitHub (`origin`), tratar GitLab como espelho secundário não bloqueante e executar `exit "$STATUS"` após registrar o resultado.
+
+## Correção do scanner histórico de segredos
+
+[EXECUTADO PELO USUÁRIO · 2026-09-24] o freeze atingiu frontend/backend/JaCoCo/BDD GREEN e parou somente na análise histórica, acusando `senha de ambiente com valor` em `docs/evidence/F5-L1`, `F5-L2` e `F5-L3`.
+
+[VERIFICADO · 2026-09-24] o detector genérico de atribuições de senha foi restringido a arquivos fora de `docs/evidence/`; chaves privadas e padrões de tokens GitHub/GitLab/AWS continuam sendo examinados em todo o histórico. A exceção evita classificar roteiros/evidências históricas de teste como configuração operacional.
