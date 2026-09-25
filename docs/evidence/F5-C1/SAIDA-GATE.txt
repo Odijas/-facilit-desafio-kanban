@@ -1,0 +1,36 @@
+=== PRÉ-CONDIÇÕES ===
+   15 arquivos alterados, todos do pacote F5-C1; frontend intocado
+   branch bugfix/2.0.0-c1-entrega sobre a release/2.0.0 (59051d0)
+F5_C1_PRECONDITIONS_GREEN
+=== BACKEND: CLEAN VERIFY + JACOCO ===
+   unitários/BDD: 24 relatórios, 165 testes, 0 falhas/erros/ignorados
+   integração: 12 relatórios, 49 testes, 0 falhas/erros/ignorados
+   OpenApiContractIT: 4 testes OK (inclui o CSRF do Swagger UI)
+   JaCoCo (unitários + integração): 95.61% de linhas (1677/1754)
+F5_C1_BACKEND_GREEN
+=== ESTÁTICA: DOCKERFILE, CI, SWAGGER, README E POLÍTICA DO FREEZE ===
+   15 arquivos do lote OK; Dockerfile, CI (3 jobs, política do freeze), Swagger CSRF e README OK
+F5_C1_STATIC_GREEN
+=== IMAGEM DO BACKEND: DOCKERFILE ANTERIOR (RED) × NOVO (GREEN) ===
+   imagem nova, unitários no build: Tests run: 165, Failures: 0, Errors: 0, Skipped: 0
+   imagem nova: JaCoCo desligado no build da imagem
+   imagem nova: build OK
+F5_C1_DOCKER_IMAGE_GREEN
+   RED reproduzido (Dockerfile anterior): Rule violated for bundle kanban: lines covered ratio is 0.59, but expected minimum is 0.95
+   RED reproduzido (Dockerfile anterior): Coverage checks have not been met. See log for details. -> [Help 1]
+=== DOCKER: BANCO NOVO + MIGRATIONS 1–7 ===
+   banco novo (facilit-kanban-f5c1); migrations V1 2 3 4 5 6 7; backend UP com a imagem nova
+F5_C1_DOCKER_GREEN
+=== SWAGGER UI: CSRF ===
+  ok 1 Swagger UI publicado
+  ok 2 swagger-initializer.js publicado
+   swagger-initializer.js com requestInterceptor: cookie XSRF-TOKEN → cabeçalho X-XSRF-TOKEN (mesma origem)
+  ok 3 login sem o cabeçalho (antes da correção) → 403
+  ok 4 passo 1: GET /api/v1/auth/csrf
+  ok 5 passo 2: login com o cabeçalho do interceptor
+  ok 6 passo 3: GET /api/v1/auth/csrf (token novo após o login)
+  ok 7 passo 4: escrita autenticada (criar secretaria)
+  ok 8 excluir secretaria
+F5_C1_SWAGGER_GREEN
+=== F5-C1 GREEN ===
+Resultado: exit code 0
