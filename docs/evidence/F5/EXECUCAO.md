@@ -36,3 +36,9 @@ Data: 2026-09-24
 [EXECUTADO PELO USUÁRIO · 2026-09-24] o freeze atingiu frontend/backend/JaCoCo/BDD GREEN e parou somente na análise histórica, acusando `senha de ambiente com valor` em `docs/evidence/F5-L1`, `F5-L2` e `F5-L3`.
 
 [VERIFICADO · 2026-09-24] o detector genérico de atribuições de senha foi restringido a arquivos fora de `docs/evidence/`; chaves privadas e padrões de tokens GitHub/GitLab/AWS continuam sendo examinados em todo o histórico. A exceção evita classificar roteiros/evidências históricas de teste como configuração operacional.
+## Correção do gate de Conventional Commits
+
+[EXECUTADO PELO USUÁRIO · 2026-09-24] o freeze avançou até a validação de histórico e parou exclusivamente em `87fa002 Revert "docs(api): documenta os erros de cada operação no OpenAPI"`.
+
+[VERIFICADO · 2026-09-24] `87fa002` é o revert auditável e publicado da correção de granularidade do F5-L2; o gate passa a aceitar somente esse subject/hash legado como exceção explícita. Todos os demais commits continuam obrigados ao padrão Conventional Commits.
+
