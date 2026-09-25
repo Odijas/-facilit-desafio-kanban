@@ -17,6 +17,7 @@ API Java para gestão de projetos em quadro Kanban, feita para o Desafio Técnic
 - [Uso de IA](#uso-de-ia)
 - [Limitações e próximos passos](#limitações-e-próximos-passos)
 - [Governança e histórico de entrega](#governança-e-histórico-de-entrega)
+- [Changelog](CHANGELOG.md)
 
 ## Visão geral
 
@@ -129,6 +130,15 @@ Serviços:
 - métricas Prometheus: `http://localhost:8080/actuator/prometheus` (HTTP Basic com a credencial técnica de métricas)
 - PostgreSQL: só na rede interna do Compose (`db:5432`)
 
+Usar a API pelo Swagger UI (a API exige sessão e token CSRF em toda escrita, inclusive no login):
+
+1. `GET /api/v1/auth/csrf` → **Try it out** → **Execute**. O navegador guarda o cookie `XSRF-TOKEN`, e o Swagger UI passa a enviá-lo no cabeçalho `X-XSRF-TOKEN` (`springdoc.swagger-ui.csrf.enabled`).
+2. `POST /api/v1/auth/login` com `{"email": "...", "password": "..."}` do administrador definido no `.env`.
+3. `GET /api/v1/auth/csrf` de novo: o login troca o token, e esta chamada entrega o novo.
+4. Qualquer operação. A sessão segue no cookie `JSESSIONID`.
+
+No GraphiQL, faça o passo 1 a 3 pelo Swagger UI (mesma origem) e informe no painel **Headers** `{"X-XSRF-TOKEN": "<valor do cookie XSRF-TOKEN>"}`.
+
 ### Observabilidade (opcional)
 
 Preencha `METRICS_PASSWORD` e `GRAFANA_ADMIN_PASSWORD` no `.env` (mínimo de 16 caracteres para `METRICS_PASSWORD`; gere com `python3 -c 'import secrets; print(secrets.token_urlsafe(32))'`) e suba com a sobreposição:
@@ -181,7 +191,7 @@ Coleção de API ([`docs/api/facilit-kanban.postman_collection.json`](docs/api/f
 ## API: Swagger, GraphQL e erros
 
 - OpenAPI com exemplos e schemas em `/api-docs`; Swagger UI em `/swagger-ui.html`.
-- GraphQL (`backend/src/main/resources/graphql/*.graphqls`) espelha o REST: consultas de projetos com os mesmos filtros, indicadores, CRUD e transição.
+- GraphQL (`backend/src/main/resources/graphql/*.graphqls`) sobre os mesmos casos de uso do REST: consultas de projetos com os mesmos filtros, indicadores, CRUD e transição. As páginas GraphQL trazem `page`, `size`, `totalPages`, `hasNext` e `hasPrevious`; o total de itens (`totalElements`) só existe no REST.
 - Indicadores adicionais: `GET /api/v1/indicators/projects/by-secretariat`, `/by-responsible` e `/deadlines?withinDays=7` (`withinDays` entre 1 e 90). O GraphQL expõe `projectIndicatorsBySecretariat`, `projectIndicatorsByResponsible` e `projectDeadlines`.
 - Erros REST em `ProblemDetail` (`application/problem+json`) com `code` estável e mensagem em pt-BR:
 
@@ -201,6 +211,7 @@ Coleção de API ([`docs/api/facilit-kanban.postman_collection.json`](docs/api/f
   No GraphQL, o mesmo código vai em `extensions.code`. O Swagger documenta os erros de cada operação com exemplos (`ApiErrorDocumentation`, verificado por `OpenApiContractIT`).
 - Logs de negócio (`evento=projeto.criado|atualizado|transicao|transicao.recusada|excluido`, `responsavel.*`, `secretaria.*`, `credencial.*`, `projeto.status.recalculado`) em formato `chave=valor`, só com ids, status e perfil do ator, sem nome nem e-mail.
 - Paginação por `page`/`size` em todas as listagens.
+- Limites de entrada, iguais em REST e GraphQL (`InputLimits`, `ProjectFilter`): nome de projeto, responsável e secretaria e cargo até 200 caracteres; e-mail até 254; de 1 a 50 responsáveis por projeto → 400 `VALIDATION_ERROR` (no Swagger, `maxLength`/`maxItems`). Texto de busca até 100 caracteres → 400 `INVALID_REQUEST`, como os demais filtros. O banco guarda `TEXT`; o limite fica na borda da API.
 
 ## Segurança
 
@@ -244,7 +255,7 @@ frontend/                    React 19 + MUI + TanStack Query (Vite)
   scripts/                   verificação de tipagem estrita
 observability/               configuração do Prometheus e provisionamento do Grafana
 docs/api/                    coleção Postman/Insomnia
-docs/adr/                    decisões de arquitetura (camada de IA)
+docs/adr/                    decisões de arquitetura (0001 camada de IA; 0002 status sempre atual)
 docs/governance/             prompts executivos e replanejamento que governam a entrega
 docs/evidence/<LOTE>/        pacote de evidências e gate de cada lote
 .github/workflows/           CI
@@ -267,11 +278,14 @@ O uso de IA no desenvolvimento está descrito em [`AI_USAGE.md`](AI_USAGE.md). A
 - Execução dos testes de integração depende de Docker disponível (Testcontainers).
 - O recálculo diário grava status e métricas com a data do cálculo; com várias instâncias, cada uma pode repetir a verificação no mesmo dia, sem efeito (é idempotente).
 - Concorrência: o `@Version` protege contra duas gravações simultâneas. A API não recebe a versão do cliente, então não detecta que alguém editou o projeto entre a leitura na tela e o envio; nesse caso, a última gravação vale.
-- Plano de conformidade em andamento (`docs/governance/PLANO-CONFORMIDADE-F5.md`): F5-L1 a F5-L4 estão concluídos; resta o F5-L5 de release e entrega.
+- GraphiQL sem envio automático do token CSRF: informe o cabeçalho `X-XSRF-TOKEN` no painel Headers (roteiro em "Como rodar").
+- Limites de tamanho só na borda da API: o banco guarda `TEXT` sem restrição de tamanho; um `CHECK` no banco seria o reforço seguinte.
 
 ## Governança e histórico de entrega
 
-Governança em `docs/governance`: `PROMPT-EXECUTIVO-BASE-v1.1.md`, `PROMPT-EXECUTIVO-KANBAN-v1.0.md`, `REPLANEJAMENTO-F3.md` e `PLANO-CONFORMIDADE-F5.md`. Cada lote gera o Pacote Anti-Alucinação (livro-razão, fontes, decisões, consumidores, matriz requisito → implementação → teste → evidência, riscos e gate) em `docs/evidence/<LOTE>/`.
+Governança em `docs/governance`: `PROMPT-EXECUTIVO-BASE-v1.1.md`, `PROMPT-EXECUTIVO-KANBAN-v1.0.md`, `REPLANEJAMENTO-F3.md`, `PLANO-CONFORMIDADE-F5.md` e `PLANO-CORRECAO-RELEASE-2.0.0.md`. Cada lote gera o Pacote Anti-Alucinação (livro-razão, fontes, decisões, consumidores, matriz requisito → implementação → teste → evidência, riscos e gate) em `docs/evidence/<LOTE>/`. A auditoria independente de aderência ao desafio que originou os lotes F5-C está em `docs/evidence/F5/ADERENCIA-FINAL.md`.
+
+Histórico Git: os lotes de F2-L1 a F3-L4 foram commitados depois dos gates, reconstruídos por lote a partir dos pacotes verificados (`docs/evidence/F3-L4/RECONSTRUCAO-HISTORICO.md`), com a data do dia da reconstrução. Do F4 em diante, cada lote tem commits granulares no momento da entrega, em Gitflow (`feature/*` ou `bugfix/*` → `merge --no-ff`).
 
 Estado dos lotes:
 
@@ -297,6 +311,10 @@ Estado dos lotes:
 - F5-L2 — Contrato de erro, confirmações, Swagger e logs: GREEN em 2026-09-24.
 - F5-L3 — Camadas de teste completas e transação por caso de uso: GREEN em 2026-09-24.
 - F5-L4 — Etapa 3, BDD e cobertura: GREEN em 2026-09-24.
+- F5-L5 — Release `v2.0.0`: roteiro, auditoria e gates em `docs/evidence/F5/`; a tag só é criada após o freeze GREEN.
+- F5-C1 — Entrega executável (build da imagem do backend e CSRF no Swagger UI), correção na `release/2.0.0` conforme `docs/governance/PLANO-CORRECAO-RELEASE-2.0.0.md`: GREEN em 2026-09-24.
+- F5-C2 — Rigor de testes e validação (métricas linha a linha no BDD e limites de tamanho nas entradas): GREEN em 2026-09-24.
+- F5-C3 — Documentação de entrega (coleção com os indicadores da Etapa 3, AI_USAGE com a F5, CHANGELOG e auditoria final): GREEN em 2026-09-24.
 
 ### Resumo por lote
 

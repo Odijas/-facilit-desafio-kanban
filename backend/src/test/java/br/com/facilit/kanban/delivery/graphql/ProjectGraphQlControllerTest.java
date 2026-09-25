@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import br.com.facilit.kanban.application.common.Actor;
@@ -234,6 +235,29 @@ class ProjectGraphQlControllerTest {
                             .containsEntry("clearedField", "actualStart")
                             .containsEntry("currentStatus", "IN_PROGRESS");
                 });
+    }
+
+    @Test
+    void rejectsInputAboveTheLimitsBeforeCallingTheService() {
+        graphQlTester.document("mutation($input: ProjectInput!) { createProject(input: $input) { id } }")
+                .variable("input", Map.of(
+                        "name", "a".repeat(201),
+                        "responsibleIds", List.of(RESPONSIBLE_ID.toString())))
+                .execute()
+                .errors()
+                .satisfy(errors -> assertThat(errors.get(0).getExtensions()).containsEntry("code", "VALIDATION_ERROR"));
+
+        graphQlTester.document("query($text: String) { projects(page: 0, size: 20, text: $text) { content { id } } }")
+                .variable("text", "a".repeat(101))
+                .execute()
+                .errors()
+                .satisfy(errors -> {
+                    assertThat(errors.get(0).getMessage())
+                            .isEqualTo("Texto de busca muito longo: use no máximo 100 caracteres (text).");
+                    assertThat(errors.get(0).getExtensions()).containsEntry("code", "INVALID_REQUEST");
+                });
+
+        verifyNoInteractions(service);
     }
 
     @Test

@@ -99,6 +99,28 @@ class ResponsibleRestControllerTest {
     }
 
     @Test
+    void rejectsFieldsAboveTheLimits() throws Exception {
+        // 64 + 1 + 190 = 255 caracteres: e-mail bem formado (partes dentro dos limites do @Email), só acima de 254.
+        String email = "a".repeat(64) + "@" + "b".repeat(63) + "." + "c".repeat(63) + "." + "d".repeat(58) + ".com";
+
+        mockMvc.perform(post("/api/v1/responsibles")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\": \"%s\", \"email\": \"%s\", \"position\": \"%s\"}"
+                                .formatted("n".repeat(201), email, "p".repeat(201))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.violations[0].field").value("email"))
+                .andExpect(jsonPath("$.violations[0].message").value("tamanho deve ser entre 0 e 254"))
+                .andExpect(jsonPath("$.violations[1].field").value("name"))
+                .andExpect(jsonPath("$.violations[1].message").value("tamanho deve ser entre 0 e 200"))
+                .andExpect(jsonPath("$.violations[2].field").value("position"))
+                .andExpect(jsonPath("$.violations[2].message").value("tamanho deve ser entre 0 e 200"))
+                .andExpect(jsonPath("$.violations.length()").value(3));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
     void translatesDuplicateEmailToConflict() throws Exception {
         when(service.create(any(), eq(ADMIN))).thenThrow(new ConflictException("Já existe responsável com este e-mail."));
 

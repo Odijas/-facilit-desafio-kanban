@@ -16,7 +16,7 @@ A proposta de camada de IA para o produto (Etapa 5) está no ADR [`docs/adr/0001
 | Ferramenta | Uso |
 |---|---|
 | ChatGPT (OpenAI) | uso em fases anteriores (F0–F2), sob os mesmos prompts de governança |
-| Claude (Anthropic), em conversas e sessões de agente no claude.ai | implementação de backend e frontend, testes, scripts de gate, documentação e pesquisa em fontes oficiais; conduziu toda a F3 |
+| Claude (Anthropic), em conversas e sessões de agente no claude.ai | implementação de backend e frontend, testes, scripts de gate, documentação e pesquisa em fontes oficiais; conduziu toda a F3; na F5, as duas auditorias de aderência (cada uma com um segundo agente independente), os planos de conformidade e de correção da release e os lotes F5-L1 a F5-L3 e F5-C1 a F5-C3 |
 | Ambiente de execução da IA (contêiner Linux) | verificações possíveis sem as dependências completas: `javac` sobre domínio e aplicação, suíte do frontend, validação de schema GraphQL, `promtool`, `actionlint`, `newman` contra servidor simulado |
 | Máquina do desenvolvedor (Linux Mint) | execução real e decisiva: `mvn clean verify` com JDK 25 e Testcontainers, Docker Compose, suíte do frontend em Node 24 e os gates de cada lote |
 
@@ -40,6 +40,10 @@ O desenvolvimento seguiu uma forma de *spec-driven development*, com três docum
    - prioridade de corte;
    - "Pacote Anti-Alucinação" obrigatório por lote.
 3. **`REPLANEJAMENTO-F3.md`.** Emenda ao plano, com as decisões do desenvolvedor registradas antes da implementação.
+4. **`PLANO-CONFORMIDADE-F5.md` e `PLANO-CORRECAO-RELEASE-2.0.0.md`.** Specs derivadas de auditorias de aderência ao PDF do desafio:
+   - cada lacuna vira um lote com critério de aceite objetivo;
+   - as decisões que mudam contrato ou escopo (versão 2.0.0, limites de tamanho, testes unitários no build da imagem) foram tomadas pelo desenvolvedor antes da implementação;
+   - cada auditoria teve um segundo agente, sem acesso à análise principal, lendo só o PDF e o código; as divergências entre os dois foram resolvidas pela evidência no código.
 
 Ciclo de cada lote:
 
@@ -97,6 +101,20 @@ Todos estão registrados em `docs/evidence/<LOTE>/EXECUCAO.md` e foram corrigido
 - **Gates antigos.**
   - **Erro:** checagens escritas como `! grep ...` não bloqueiam sob `set -e` do bash. A própria IA encontrou a falha ao revisar o gate do F3-L3.
   - **Correção:** as checagens passaram a usar `if grep ...; then exit 1; fi`.
+- **v1.0.0: status congelado no tempo** (o erro mais relevante do projeto).
+  - **Erro:** status, dias de atraso e % de tempo restante eram calculados só ao gravar. As regras estavam certas no dia da gravação, mas o quadro, as listagens e os indicadores ficavam errados com a passagem dos dias, e a transição partia do status gravado.
+  - **Quem pegou:** a auditoria de aderência de 23/09, com um segundo agente independente, lendo o PDF linha a linha contra o código.
+  - **Correção:** plano F5 e release 2.0.0 (recálculo antes das leituras, na subida e à meia-noite; fuso de negócio; ADR 0002).
+- **F5-L1 rev1.**
+  - **Erro:** o gate exigia a tag `v1.0.0` como ancestral da branch, mas, no Gitflow, a tag fica no merge da release na `main`, e a `develop` recebe a branch release.
+  - **Correção:** aceitar a tag ou o segundo pai do merge, conferindo que o conteúdo é o mesmo.
+- **Release 2.0.0 candidata: imagem Docker do backend quebrada.**
+  - **Erro:** o F5-L4 ligou o limite de 95% do JaCoCo ao `verify`, medido com testes unitários e de integração. O Dockerfile roda `verify` sem os de integração, e a cobertura ali era de 59%. Nem o gate do F5-L4 nem o CI construíam a imagem.
+  - **Quem pegou:** a segunda auditoria de aderência (24/09), com agente independente; o gate do F5-C1 reproduziu a falha antes de corrigir.
+  - **Correção:** F5-C1 (imagem sem o limite de cobertura, que continua valendo no CI; o CI passa a construir a imagem).
+- **Swagger UI sem CSRF.**
+  - **Erro:** a API exige o token CSRF até no login, e o Swagger UI não o enviava; o "Try it out" autenticado respondia 403.
+  - **Correção:** F5-C1 (`springdoc.swagger-ui.csrf.enabled` e roteiro no README).
 
 ## 6. Trecho de prompt representativo
 
@@ -107,6 +125,15 @@ Do `PROMPT-EXECUTIVO-BASE-v1.1.md`, cláusula 2.1, que governou todas as sessõe
 - PROIBIDO reportar teste verde, build ok ou lint limpo sem execução real. Toda entrega cola a saída real dos comandos de verificação do projeto.
 - PROIBIDO apresentar previsão como resultado.
 - Se a ferramenta de IA não puder executar comandos, ela declara isso e entrega instruções de verificação para o usuário executar — nunca simula resultados.
+```
+
+Da spec de correção da release (`PLANO-CORRECAO-RELEASE-2.0.0.md`), escrita e aprovada antes de qualquer código:
+
+```text
+- Separação por risco: o C1 corrige o que impede o avaliador de usar o sistema e tem que ficar GREEN de qualquer jeito.
+  Mudança de contrato (C2) e documentação (C3) ficam em lotes separados, para uma falha não segurar a correção crítica.
+- Sem mudança no frontend, sem migration nova e sem job novo no CI.
+- Linha de corte: se o C2 não ficar GREEN até 25/09 às 12h, ele sai da release.
 ```
 
 As instruções de sessão eram curtas, porque as regras já estavam nos documentos de governança. Por exemplo, ao devolver a saída de um gate:

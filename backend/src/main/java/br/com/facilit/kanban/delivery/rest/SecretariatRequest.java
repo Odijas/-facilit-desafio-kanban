@@ -1,6 +1,9 @@
 package br.com.facilit.kanban.delivery.rest;
 
-import jakarta.validation.constraints.NotBlank;
+import static br.com.facilit.kanban.delivery.common.InputLimits.NAME_MAX_LENGTH;
 
-public record SecretariatRequest(@NotBlank String name) {
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record SecretariatRequest(@NotBlank @Size(max = NAME_MAX_LENGTH) String name) {
 }

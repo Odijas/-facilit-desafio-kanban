@@ -4,10 +4,12 @@ import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
 import br.com.facilit.kanban.application.secretariat.SaveSecretariatCommand;
 import br.com.facilit.kanban.application.secretariat.SecretariatService;
+import br.com.facilit.kanban.delivery.common.InputLimits;
 import br.com.facilit.kanban.domain.secretariat.Secretariat;
 import br.com.facilit.kanban.infrastructure.security.AuthenticatedActorResolver;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
@@ -68,7 +70,7 @@ public class SecretariatGraphQlController {
         return true;
     }
 
-    public record SecretariatGraphQlInput(@NotBlank String name) {
+    public record SecretariatGraphQlInput(@NotBlank @Size(max = InputLimits.NAME_MAX_LENGTH) String name) {
         SaveSecretariatCommand toCommand() {
             return new SaveSecretariatCommand(name);
         }
