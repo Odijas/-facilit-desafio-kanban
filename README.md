@@ -314,7 +314,7 @@ Estado dos lotes:
 - F5-L5 — Release `v2.0.0`: roteiro, auditoria e gates em `docs/evidence/F5/`; a tag só é criada após o freeze GREEN.
 - F5-C1 — Entrega executável (build da imagem do backend e CSRF no Swagger UI), correção na `release/2.0.0` conforme `docs/governance/PLANO-CORRECAO-RELEASE-2.0.0.md`: GREEN em 2026-09-24.
 - F5-C2 — Rigor de testes e validação (métricas linha a linha no BDD e limites de tamanho nas entradas): GREEN em 2026-09-24.
-- F5-C3 — Documentação de entrega (coleção com os indicadores da Etapa 3, AI_USAGE com a F5, CHANGELOG e auditoria final): CANDIDATE em 2026-09-24, aguardando gate local.
+- F5-C3 — Documentação de entrega (coleção com os indicadores da Etapa 3, AI_USAGE com a F5, CHANGELOG e auditoria final): GREEN em 2026-09-24.
 
 ### Resumo por lote
 

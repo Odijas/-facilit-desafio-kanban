@@ -2,7 +2,7 @@
 
 Todas as mudanças relevantes deste projeto são registradas aqui.
 
-## [2.0.0] — 2026-09-25
+## [2.0.0] — 2026-09-24
 
 ### Breaking changes
 

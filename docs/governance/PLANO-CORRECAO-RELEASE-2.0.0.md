@@ -118,4 +118,5 @@ Se o freeze falhar, a correção entra num lote de revisão (`-rev2`) do própri
 
 - F5-C1 — GREEN em 2026-09-24 21h59 (RED do Dockerfile anterior reproduzido: 59% de cobertura só com unitários). CI da `release/2.0.0` verde com o passo da imagem.
 - F5-C2 — GREEN em 2026-09-24 22h14.
-- F5-C3 — CANDIDATE em 2026-09-24.
+- F5-C3 — GREEN em 2026-09-24 22h27 (coleção inteira no newman: 27 requisições, 52 asserções). CI da `release/2.0.0` verde com o F5-C2.
+- Próximo: freeze e release (`docs/evidence/F5/RELEASE.md`, passos 4 a 9).
