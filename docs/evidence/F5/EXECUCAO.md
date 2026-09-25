@@ -41,4 +41,3 @@ Data: 2026-09-24
 [EXECUTADO PELO USUÁRIO · 2026-09-24] o freeze avançou até a validação de histórico e parou exclusivamente em `87fa002 Revert "docs(api): documenta os erros de cada operação no OpenAPI"`.
 
 [VERIFICADO · 2026-09-24] `87fa002` é o revert auditável e publicado da correção de granularidade do F5-L2; o gate passa a aceitar somente esse subject/hash legado como exceção explícita. Todos os demais commits continuam obrigados ao padrão Conventional Commits.
-
