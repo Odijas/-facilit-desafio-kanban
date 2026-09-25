@@ -38,6 +38,18 @@ git push -u origin release/2.0.0
 
 O push para o GitHub dispara o CI da branch de release.
 
+## 3a. Correções antes do freeze (executado em 2026-09-24)
+
+Os passos 1 a 3 foram executados (`release/2.0.0` @ `59051d0`). A auditoria de aderência da release candidata (`ADERENCIA-FINAL.md`) gerou três lotes de correção, aplicados na própria `release/2.0.0` pelo Gitflow de release, cada um com gate GREEN antes do commit:
+
+| Lote | Branch | Conteúdo |
+|---|---|---|
+| F5-C1 | `bugfix/2.0.0-c1-entrega` | imagem Docker do backend, passo `docker build` no CI, CSRF no Swagger UI |
+| F5-C2 | `bugfix/2.0.0-c2-testes-validacao` | métricas linha a linha no BDD, limites de tamanho nas entradas |
+| F5-C3 | `bugfix/2.0.0-c3-documentacao` | coleção, AI_USAGE, README, CHANGELOG e auditoria final |
+
+Depois do merge do F5-C3 e do CI verde da `release/2.0.0`, siga o passo 4.
+
 ## 4. Gate de freeze
 
 ```sh

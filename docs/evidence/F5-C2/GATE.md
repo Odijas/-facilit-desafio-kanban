@@ -2,7 +2,7 @@
 
 Data: 2026-09-24
 
-Estado: **CANDIDATE**, aguardando o gate local.
+Estado: **GREEN** (gate local em 2026-09-24 22h14).
 
 Escopo: `docs/governance/PLANO-CORRECAO-RELEASE-2.0.0.md`, lote F5-C2 (rigor de testes e validação), mais a promoção do F5-C1, na `release/2.0.0`.
 
@@ -34,3 +34,11 @@ Critérios:
   - `/api-docs` com `maxLength` e `maxItems`.
 - `F5_C1_CI_GREEN`: CI da `release/2.0.0` com o F5-C1 (3 jobs em sucesso e o passo `Imagem Docker do backend`).
 - Marcador final `=== F5-C2 GREEN ===` e `Resultado: exit code 0`.
+
+Evidência recebida do usuário: `SAIDA-GATE.txt` (saída integral do gate, pacote SHA-256 `664a9ca8…d236c03e5` conferido).
+
+- 174 testes unitários/BDD e 49 de integração, sem falha; BDD com o passo de métricas nas 12 linhas; JaCoCo 95,62%.
+- Limites na API real: fronteiras aceitas (nome 200, e-mail 254) e recusadas (201, 255, 51 responsáveis, texto 101, GraphQL); OpenAPI com `maxLength`/`maxItems`.
+- `F5_C1_CI_GREEN`: CI da `release/2.0.0` @ `e986aba` (run 36080772265) com os 3 jobs e o passo da imagem Docker em sucesso.
+
+Conclusão: F5-C2 promovido para GREEN em 2026-09-24.

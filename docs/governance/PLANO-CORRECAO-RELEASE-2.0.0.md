@@ -113,3 +113,9 @@ Se o freeze falhar, a correção entra num lote de revisão (`-rev2`) do própri
 1. **Imagem do backend:** manter os testes unitários no build da imagem: `RUN mvn -B -ntp -DskipITs -Djacoco.skip=true verify`. **Aprovado.**
 2. **Limites de tamanho do C2:** nome e cargo 200, e-mail 254, texto do filtro 100, `responsibleIds` de 1 a 50. **Aprovado.**
 3. **`ADERENCIA-FINAL.md`:** versionado em `docs/evidence/F5/`, no lote F5-C3. **Aprovado.**
+
+## 5. Estado
+
+- F5-C1 — GREEN em 2026-09-24 21h59 (RED do Dockerfile anterior reproduzido: 59% de cobertura só com unitários). CI da `release/2.0.0` verde com o passo da imagem.
+- F5-C2 — GREEN em 2026-09-24 22h14.
+- F5-C3 — CANDIDATE em 2026-09-24.

@@ -21,6 +21,10 @@ Todas as mudanças relevantes deste projeto são registradas aqui.
 - JaCoCo integrado ao `mvn clean verify` com mínimo global de 95% de linhas.
 - Testes isolados de controllers REST/GraphQL com Mockito e novos testes de persistência/transação/API.
 - Documentação de erro no OpenAPI e logs de negócio sem dados pessoais.
+- Limites de tamanho nas entradas REST e GraphQL: nomes e cargo até 200 caracteres, e-mail até 254, texto de busca até 100 e de 1 a 50 responsáveis por projeto (400, publicados no OpenAPI).
+- BDD confere atraso e percentual restante em cada linha da tabela de transição.
+- O CI constrói a imagem Docker do backend. O build da imagem roda os testes unitários sem o limite do JaCoCo, que é medido com unitários e integração no `mvn clean verify` do CI.
+- Coleção Postman com os indicadores por secretaria, por responsável e de prazos.
 
 ### Fixed
 
@@ -28,6 +32,7 @@ Todas as mudanças relevantes deste projeto são registradas aqui.
 - Transições passam a partir do status calculado para o dia atual.
 - Datas realizadas no futuro são rejeitadas.
 - Corridas de unicidade e atualização otimista deixam de resultar em erro interno genérico.
+- O Swagger UI envia o token CSRF exigido pela API; login e operações autenticadas funcionam pelo "Try it out".
 
 ## [1.0.0] — 2026-09-23
 

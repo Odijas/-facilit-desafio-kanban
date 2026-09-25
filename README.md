@@ -191,7 +191,7 @@ Coleção de API ([`docs/api/facilit-kanban.postman_collection.json`](docs/api/f
 ## API: Swagger, GraphQL e erros
 
 - OpenAPI com exemplos e schemas em `/api-docs`; Swagger UI em `/swagger-ui.html`.
-- GraphQL (`backend/src/main/resources/graphql/*.graphqls`) espelha o REST: consultas de projetos com os mesmos filtros, indicadores, CRUD e transição.
+- GraphQL (`backend/src/main/resources/graphql/*.graphqls`) sobre os mesmos casos de uso do REST: consultas de projetos com os mesmos filtros, indicadores, CRUD e transição. As páginas GraphQL trazem `page`, `size`, `totalPages`, `hasNext` e `hasPrevious`; o total de itens (`totalElements`) só existe no REST.
 - Indicadores adicionais: `GET /api/v1/indicators/projects/by-secretariat`, `/by-responsible` e `/deadlines?withinDays=7` (`withinDays` entre 1 e 90). O GraphQL expõe `projectIndicatorsBySecretariat`, `projectIndicatorsByResponsible` e `projectDeadlines`.
 - Erros REST em `ProblemDetail` (`application/problem+json`) com `code` estável e mensagem em pt-BR:
 
@@ -255,7 +255,7 @@ frontend/                    React 19 + MUI + TanStack Query (Vite)
   scripts/                   verificação de tipagem estrita
 observability/               configuração do Prometheus e provisionamento do Grafana
 docs/api/                    coleção Postman/Insomnia
-docs/adr/                    decisões de arquitetura (camada de IA)
+docs/adr/                    decisões de arquitetura (0001 camada de IA; 0002 status sempre atual)
 docs/governance/             prompts executivos e replanejamento que governam a entrega
 docs/evidence/<LOTE>/        pacote de evidências e gate de cada lote
 .github/workflows/           CI
@@ -278,11 +278,14 @@ O uso de IA no desenvolvimento está descrito em [`AI_USAGE.md`](AI_USAGE.md). A
 - Execução dos testes de integração depende de Docker disponível (Testcontainers).
 - O recálculo diário grava status e métricas com a data do cálculo; com várias instâncias, cada uma pode repetir a verificação no mesmo dia, sem efeito (é idempotente).
 - Concorrência: o `@Version` protege contra duas gravações simultâneas. A API não recebe a versão do cliente, então não detecta que alguém editou o projeto entre a leitura na tela e o envio; nesse caso, a última gravação vale.
-- Plano de conformidade F5 (`docs/governance/PLANO-CONFORMIDADE-F5.md`): F5-L1 a F5-L4 estão concluídos; o F5-L5 prepara a release `v2.0.0`, executa o freeze completo e fecha a entrega.
+- GraphiQL sem envio automático do token CSRF: informe o cabeçalho `X-XSRF-TOKEN` no painel Headers (roteiro em "Como rodar").
+- Limites de tamanho só na borda da API: o banco guarda `TEXT` sem restrição de tamanho; um `CHECK` no banco seria o reforço seguinte.
 
 ## Governança e histórico de entrega
 
-Governança em `docs/governance`: `PROMPT-EXECUTIVO-BASE-v1.1.md`, `PROMPT-EXECUTIVO-KANBAN-v1.0.md`, `REPLANEJAMENTO-F3.md` e `PLANO-CONFORMIDADE-F5.md`. Cada lote gera o Pacote Anti-Alucinação (livro-razão, fontes, decisões, consumidores, matriz requisito → implementação → teste → evidência, riscos e gate) em `docs/evidence/<LOTE>/`.
+Governança em `docs/governance`: `PROMPT-EXECUTIVO-BASE-v1.1.md`, `PROMPT-EXECUTIVO-KANBAN-v1.0.md`, `REPLANEJAMENTO-F3.md`, `PLANO-CONFORMIDADE-F5.md` e `PLANO-CORRECAO-RELEASE-2.0.0.md`. Cada lote gera o Pacote Anti-Alucinação (livro-razão, fontes, decisões, consumidores, matriz requisito → implementação → teste → evidência, riscos e gate) em `docs/evidence/<LOTE>/`. A auditoria independente de aderência ao desafio que originou os lotes F5-C está em `docs/evidence/F5/ADERENCIA-FINAL.md`.
+
+Histórico Git: os lotes de F2-L1 a F3-L4 foram commitados depois dos gates, reconstruídos por lote a partir dos pacotes verificados (`docs/evidence/F3-L4/RECONSTRUCAO-HISTORICO.md`), com a data do dia da reconstrução. Do F4 em diante, cada lote tem commits granulares no momento da entrega, em Gitflow (`feature/*` ou `bugfix/*` → `merge --no-ff`).
 
 Estado dos lotes:
 
@@ -310,7 +313,8 @@ Estado dos lotes:
 - F5-L4 — Etapa 3, BDD e cobertura: GREEN em 2026-09-24.
 - F5-L5 — Release `v2.0.0`: roteiro, auditoria e gates em `docs/evidence/F5/`; a tag só é criada após o freeze GREEN.
 - F5-C1 — Entrega executável (build da imagem do backend e CSRF no Swagger UI), correção na `release/2.0.0` conforme `docs/governance/PLANO-CORRECAO-RELEASE-2.0.0.md`: GREEN em 2026-09-24.
-- F5-C2 — Rigor de testes e validação (métricas linha a linha no BDD e limites de tamanho nas entradas): CANDIDATE em 2026-09-24, aguardando gate local.
+- F5-C2 — Rigor de testes e validação (métricas linha a linha no BDD e limites de tamanho nas entradas): GREEN em 2026-09-24.
+- F5-C3 — Documentação de entrega (coleção com os indicadores da Etapa 3, AI_USAGE com a F5, CHANGELOG e auditoria final): CANDIDATE em 2026-09-24, aguardando gate local.
 
 ### Resumo por lote
 

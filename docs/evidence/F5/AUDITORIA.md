@@ -2,7 +2,7 @@
 
 Data: 2026-09-24 · Release candidata `2.0.0`.
 
-A auditoria consolida a aderência funcional já promovida nos lotes F5-L1–L4. O estado da **release** continua pendente até `SAIDA-GATE.txt` e `SAIDA-RELEASE.txt` existirem com exit code 0.
+A auditoria consolida a aderência funcional promovida nos lotes F5-L1 a F5-L4 e nos lotes de correção F5-C1 a F5-C3. Os lotes C vieram de uma segunda auditoria independente sobre a release candidata (`ADERENCIA-FINAL.md`, 24/09). O estado da **release** continua pendente até `SAIDA-GATE.txt` e `SAIDA-RELEASE.txt` existirem com exit code 0.
 
 ## Obrigatórios do desafio
 
@@ -10,14 +10,14 @@ A auditoria consolida a aderência funcional já promovida nos lotes F5-L1–L4.
 |---|---|---|---|
 | CRUD Projeto e Responsável, e-mail único, auditoria | services REST/GraphQL + JPA/Flyway | F1-L1; F5-L3 controllers/persistência | GREEN |
 | Status pelas datas e métricas | domínio + `ProjectScheduleRefresher` | F5-L1, `ScheduleFreshnessIT` | GREEN |
-| 12 transições, bloqueios, confirmação e recálculo | `ProjectStatusTransition` + REST/GraphQL | F5-L2/L3; Cucumber F5-L4 | GREEN |
+| 12 transições, bloqueios, confirmação e recálculo | `ProjectStatusTransition` + REST/GraphQL | F5-L2/L3; Cucumber F5-L4 com atraso e percentual conferidos linha a linha (F5-C2) | GREEN |
 | Listagem Kanban por status | `ProjectService.listByStatus/search` | F5-L1/L3 | GREEN |
 | REST obrigatório | controllers `/api/v1/*` | suites unitárias/API/integração | GREEN |
-| Swagger/OpenAPI com exemplos e erros | springdoc + `ApiErrorDocumentation` | `OpenApiContractIT`, F5-L2 | GREEN |
+| Swagger/OpenAPI com exemplos e erros | springdoc + `ApiErrorDocumentation`; CSRF no Swagger UI (F5-C1); `maxLength`/`maxItems` (F5-C2) | `OpenApiContractIT`, F5-L2, F5-C1 | GREEN |
 | Testes JUnit de services/controllers com mocks | unitários + `@WebMvcTest`/`@GraphQlTest` + Mockito | F5-L3 | GREEN |
-| Erros padronizados e validação | ProblemDetail + códigos estáveis, Bean Validation | F5-L2/L3 | GREEN |
+| Erros padronizados e validação | ProblemDetail + códigos estáveis, Bean Validation, limites de tamanho (F5-C2) | F5-L2/L3, F5-C2 | GREEN |
 | Paginação e índices | page contracts + migrations V1/V3 | integração e freeze | GREEN |
-| Docker Compose app + banco | `compose.yaml` | F4 e gates F5; freeze final revalida | GREEN promovido |
+| Docker Compose app + banco | `compose.yaml`; build da imagem corrigido no F5-C1 (RED reproduzido: 59% de cobertura só com unitários) | F5-C1 e F5-C2 (`up --build` com banco novo); CI constrói a imagem; freeze final revalida | GREEN |
 | README obrigatório | `README.md` | checagem estática do freeze | GREEN promovido |
 | AI_USAGE.md obrigatório | `AI_USAGE.md` | checagem estática | GREEN promovido |
 | Repositório público e histórico granular | Gitflow + Conventional Commits | F4 + commits F5; freeze/release revalidam | GREEN promovido |
@@ -54,6 +54,9 @@ A auditoria consolida a aderência funcional já promovida nos lotes F5-L1–L4.
 ## Lacunas declaradas
 
 - `[DESCONHECIDO]` o freeze e a release pública `v2.0.0` ainda não foram executados neste arquivo; são bloqueados pelos dois gates do L5.
+- Aderência medida pela segunda auditoria antes dos lotes C: 95% dos obrigatórios e 96% dos diferenciais (`ADERENCIA-FINAL.md`). Os lotes F5-C1 e F5-C2 fecharam as parciais de Docker (#2), métricas linha a linha (#29) e validação de tamanho (#32).
+- Histórico de commits: F2-L1 a F3-L4 foram reconstruídos por lote depois dos gates (`docs/evidence/F3-L4/RECONSTRUCAO-HISTORICO.md`); declarado no README.
+- GraphiQL exige o token CSRF à mão no painel Headers (roteiro no README); o Swagger UI envia automaticamente.
 - A camada de IA permanece uma **proposta arquitetural**, não uma integração com LLM em produção; isso é expressamente aceito como opção da Etapa 5 do desafio.
 - O frontend não possui tela administrativa de credenciais; o contrato existe em REST/GraphQL/Swagger e esse item não é requisito do desafio.
 - O aviso de tamanho do bundle Vite permanece informativo; não é falha de build nem requisito funcional.

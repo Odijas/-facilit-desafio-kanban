@@ -50,3 +50,5 @@ Evidência recebida do usuário: `SAIDA-GATE.txt` (saída integral do gate, paco
   - `mvn clean verify` com JaCoCo 95,61%.
 
 Conclusão: F5-C1 promovido para GREEN em 2026-09-24.
+
+Registro posterior (gate do F5-C2, 2026-09-24 22h14): `F5_C1_CI_GREEN` — CI da `release/2.0.0` @ `e986aba` (run 36080772265) com `frontend`, `backend` e `repository` em sucesso e o passo `Imagem Docker do backend` em sucesso. A conferência do Swagger no navegador não foi registrada pelo usuário; o fluxo foi provado pelo gate contra a API real (`F5_C1_SWAGGER_GREEN`).
