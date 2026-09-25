@@ -158,15 +158,38 @@ public final class ProjectStatusTransition {
         }
         if (currentStatus == ProjectStatus.NOT_STARTED
                 && requestedStatus == ProjectStatus.OVERDUE) {
+            if (dates.plannedStart() == null && dates.plannedEnd() == null) {
+                return transition + "informe o início previsto (plannedStart) ou o término previsto (plannedEnd) "
+                        + "para que a regra de atraso possa ser avaliada. Hoje é " + today + ".";
+            }
+            if (dates.plannedStart() == null) {
+                return transition + "o projeto só fica Atrasado depois que o término previsto ("
+                        + dates.plannedEnd() + ") passar, ou depois que um início previsto (plannedStart) informado "
+                        + "passar sem início realizado. Hoje é " + today + ".";
+            }
+            if (dates.plannedEnd() == null) {
+                return transition + "o projeto só fica Atrasado depois que o início previsto ("
+                        + dates.plannedStart() + ") passar sem início realizado. Se o atraso for pelo prazo final, "
+                        + "informe o término previsto (plannedEnd). Hoje é " + today + ".";
+            }
             return transition + "o projeto só fica Atrasado depois que o início previsto (" + dates.plannedStart()
                     + ") passar sem início realizado, ou depois que o término previsto (" + dates.plannedEnd()
                     + ") passar. Hoje é " + today + ".";
         }
         if (currentStatus == ProjectStatus.IN_PROGRESS
                 && requestedStatus == ProjectStatus.NOT_STARTED) {
+            if (dates.plannedStart() != null && dates.plannedStart().isBefore(today)) {
+                return transition + "sem o início realizado, o projeto ficaria " + recalculatedStatus.label()
+                        + " porque o início previsto (" + dates.plannedStart() + ") já passou. Ajuste o início "
+                        + "previsto (plannedStart) para hoje (" + today + ") ou depois.";
+            }
+            if (dates.plannedEnd() != null && dates.plannedEnd().isBefore(today)) {
+                return transition + "sem o início realizado, o projeto ficaria " + recalculatedStatus.label()
+                        + " porque o término previsto (" + dates.plannedEnd() + ") já passou. Ajuste o término "
+                        + "previsto (plannedEnd) para hoje (" + today + ") ou depois.";
+            }
             return transition + "sem o início realizado, o projeto ficaria " + recalculatedStatus.label()
-                    + " porque o início previsto (" + dates.plannedStart() + ") já passou. Ajuste o início "
-                    + "previsto (plannedStart) para hoje (" + today + ") ou depois.";
+                    + ". Ajuste as datas previstas e tente de novo.";
         }
         if (currentStatus == ProjectStatus.OVERDUE
                 && requestedStatus == ProjectStatus.NOT_STARTED) {
@@ -186,9 +209,16 @@ public final class ProjectStatusTransition {
         }
         if (currentStatus == ProjectStatus.COMPLETED
                 && requestedStatus == ProjectStatus.IN_PROGRESS) {
+            if (dates.actualStart() == null) {
+                return transition + "sem o término realizado, o projeto ficaria " + recalculatedStatus.label()
+                        + ". Informe o início realizado (actualStart) para o projeto ficar Em andamento.";
+            }
+            if (recalculatedStatus == ProjectStatus.OVERDUE) {
+                return transition + "sem o término realizado, o projeto ficaria Atrasado. Ajuste o término "
+                        + "previsto (plannedEnd) para hoje (" + today + ") ou depois.";
+            }
             return transition + "sem o término realizado, o projeto ficaria " + recalculatedStatus.label()
-                    + ". Ajuste o término previsto (plannedEnd) para hoje (" + today + ") ou depois e mantenha "
-                    + "o início realizado (actualStart) preenchido.";
+                    + ". Ajuste as datas do projeto e tente de novo.";
         }
         if (currentStatus == ProjectStatus.COMPLETED
                 && requestedStatus == ProjectStatus.OVERDUE) {

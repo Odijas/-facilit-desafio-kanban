@@ -68,19 +68,6 @@ public class ProjectPersistenceAdapter implements ProjectRepository {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<Project> findAll(PageQuery pageQuery) {
-        PageRequest pageable = pageable(pageQuery);
-        return toPageResult(repository.findAll(pageable));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public PageResult<Project> findByStatus(ProjectStatus status, PageQuery pageQuery) {
-        return toPageResult(repository.findByStatus(status, pageable(pageQuery)));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public PageResult<Project> search(ProjectFilter filter, PageQuery pageQuery) {
         return toPageResult(repository.findAll(matching(filter), pageable(pageQuery)));
     }

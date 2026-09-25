@@ -67,6 +67,16 @@ class ProjectStatusTransitionTest {
     }
 
     @Test
+    void line02WithMissingPlannedDatesExplainsWhatMustBeProvidedWithoutNullText() {
+        Project project = project(ProjectStatus.NOT_STARTED, new ProjectDates(null, null, null, null));
+
+        assertThatThrownBy(() -> transition.transition(project, ProjectStatus.OVERDUE, TODAY, false))
+                .isInstanceOf(TransitionBlockedException.class)
+                .hasMessageContaining("informe o início previsto (plannedStart) ou o término previsto (plannedEnd)")
+                .hasMessageNotContaining("null");
+    }
+
+    @Test
     void line02TreatsStaleNotStartedAsOverdueOnceThePlannedStartHasPassed() {
         Project project = staleProject(
                 ProjectStatus.NOT_STARTED,
@@ -242,6 +252,19 @@ class ProjectStatusTransitionTest {
     }
 
     @Test
+    void line11WhenRecalculatedAsNotStartedAsksForActualStart() {
+        Project project = project(
+                ProjectStatus.COMPLETED,
+                new ProjectDates(TODAY, TODAY.plusDays(10), null, TODAY));
+
+        assertThatThrownBy(() -> transition.transition(project, ProjectStatus.IN_PROGRESS, TODAY, true))
+                .isInstanceOf(TransitionBlockedException.class)
+                .hasMessage("Concluído → Em andamento bloqueado: sem o término realizado, o projeto ficaria "
+                        + "A iniciar. Informe o início realizado (actualStart) para o projeto ficar Em andamento.")
+                .hasMessageNotContaining("null");
+    }
+
+    @Test
     void line11TransitionsCompletedToInProgressByClearingActualEndWhenConfirmed() {
         Project project = project(ProjectStatus.COMPLETED, new ProjectDates(TODAY.minusDays(1), TODAY.plusDays(10), TODAY.minusDays(1), TODAY));
 
@@ -258,8 +281,8 @@ class ProjectStatusTransitionTest {
         assertThatThrownBy(() -> transition.transition(project, ProjectStatus.IN_PROGRESS, TODAY, true))
                 .isInstanceOf(TransitionBlockedException.class)
                 .hasMessage("Concluído → Em andamento bloqueado: sem o término realizado, o projeto ficaria Atrasado. "
-                        + "Ajuste o término previsto (plannedEnd) para hoje (2026-09-22) ou depois e mantenha o "
-                        + "início realizado (actualStart) preenchido.");
+                        + "Ajuste o término previsto (plannedEnd) para hoje (2026-09-22) ou depois.")
+                .hasMessageNotContaining("null");
     }
 
     // Linha 12 — Concluído → Atrasado: término realizado = null; só se as regras classificarem Atrasado.

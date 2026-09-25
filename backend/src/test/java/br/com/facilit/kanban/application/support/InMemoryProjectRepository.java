@@ -40,43 +40,6 @@ public final class InMemoryProjectRepository implements ProjectRepository {
     }
 
     @Override
-    public PageResult<Project> findAll(PageQuery pageQuery) {
-        List<Project> sorted = values.values().stream()
-                .sorted(Comparator.comparing(Project::name).thenComparing(Project::id))
-                .toList();
-        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), sorted.size());
-        int toIndex = Math.min(fromIndex + pageQuery.size(), sorted.size());
-        int totalPages = sorted.isEmpty()
-                ? 0
-                : (int) Math.ceil((double) sorted.size() / pageQuery.size());
-        return new PageResult<>(
-                sorted.subList(fromIndex, toIndex),
-                pageQuery.page(),
-                pageQuery.size(),
-                sorted.size(),
-                totalPages);
-    }
-
-    @Override
-    public PageResult<Project> findByStatus(ProjectStatus status, PageQuery pageQuery) {
-        List<Project> sorted = values.values().stream()
-                .filter(project -> project.status() == status)
-                .sorted(Comparator.comparing(Project::name).thenComparing(Project::id))
-                .toList();
-        int fromIndex = Math.min(pageQuery.page() * pageQuery.size(), sorted.size());
-        int toIndex = Math.min(fromIndex + pageQuery.size(), sorted.size());
-        int totalPages = sorted.isEmpty()
-                ? 0
-                : (int) Math.ceil((double) sorted.size() / pageQuery.size());
-        return new PageResult<>(
-                sorted.subList(fromIndex, toIndex),
-                pageQuery.page(),
-                pageQuery.size(),
-                sorted.size(),
-                totalPages);
-    }
-
-    @Override
     public PageResult<Project> search(ProjectFilter filter, PageQuery pageQuery) {
         List<Project> sorted = values.values().stream()
                 .filter(project -> filter.status() == null || project.status() == filter.status())

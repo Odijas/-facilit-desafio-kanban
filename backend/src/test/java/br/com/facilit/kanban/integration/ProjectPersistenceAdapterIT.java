@@ -137,7 +137,9 @@ class ProjectPersistenceAdapterIT {
                 .extracting(Project::id)
                 .containsExactly(portal.id());
 
-        var firstPage = adapter.findByStatus(ProjectStatus.NOT_STARTED, new PageQuery(0, 2));
+        var firstPage = adapter.search(
+                new ProjectFilter(ProjectStatus.NOT_STARTED, null, null, null, null, null),
+                new PageQuery(0, 2));
         assertThat(firstPage.totalElements()).isEqualTo(3);
         assertThat(firstPage.totalPages()).isEqualTo(2);
         assertThat(firstPage.content()).extracting(Project::name)
