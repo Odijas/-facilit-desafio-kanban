@@ -776,6 +776,149 @@
           ]
         },
         {
+          "name": "Indicadores por secretaria",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/indicators/projects/by-secretariat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "indicators",
+                "projects",
+                "by-secretariat"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const group = pm.response.json().find((item) => item.id === pm.collectionVariables.get(\"secretariatId\"));",
+                  "pm.test(\"secretaria do cenário com 1 projeto\", () => pm.expect(group && group.projectCount).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Indicadores por responsável",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/indicators/projects/by-responsible",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "indicators",
+                "projects",
+                "by-responsible"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const group = pm.response.json().find((item) => item.id === pm.collectionVariables.get(\"responsibleId\"));",
+                  "pm.test(\"responsável do cenário com 1 projeto\", () => pm.expect(group && group.projectCount).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prazos nos próximos 10 dias",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/indicators/projects/deadlines?withinDays=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "indicators",
+                "projects",
+                "deadlines"
+              ],
+              "query": [
+                {
+                  "key": "withinDays",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const deadline = pm.response.json().projects.find((item) => item.projectId === pm.collectionVariables.get(\"projectId\"));",
+                  "pm.test(\"projeto vence em 10 dias\", () => pm.expect(deadline && deadline.daysUntilDeadline).to.eql(10));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Prazos com janela inválida → 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/indicators/projects/deadlines?withinDays=0",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "indicators",
+                "projects",
+                "deadlines"
+              ],
+              "query": [
+                {
+                  "key": "withinDays",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"código INVALID_REQUEST\", () => pm.expect(pm.response.json().code).to.eql(\"INVALID_REQUEST\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "GraphQL — projeto e indicadores",
           "request": {
             "method": "POST",
