@@ -2,7 +2,7 @@
 
 Data: 2026-09-25
 
-Estado: **CANDIDATE — AGUARDANDO GATE LOCAL**.
+Estado: **GREEN** (gate local em 2026-09-25; saída em `SAIDA-GATE.txt`). Fechamento Gitflow registrado em `FECHAMENTO.txt`.
 
 Escopo: F5-Q2 de `docs/governance/PLANO-CORRECAO-RELEASE-2.0.2.md`: documentação E1/E2, ADR D1, CHANGELOG/AI_USAGE, promoção do F5-Q1 e versionamento da auditoria `v2.0.1`.
 

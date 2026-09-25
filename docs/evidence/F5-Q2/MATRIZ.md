@@ -10,5 +10,5 @@ Data: 2026-09-25
 | D1 + coerência do ADR | ADR 0002 cita somente `get`, `search`, `indicators`; referências de teste antigas foram alinhadas aos métodos reais; CHANGELOG registra remoção | busca por pontos removidos e métodos citados no ADR | `[VERIFICADO]` |
 | promoção Q1 | GATE/EXECUCAO/MATRIZ/RISCOS + `SAIDA-GATE.txt`/`FECHAMENTO.txt` | marcadores GREEN + hashes HEAD/ORIGIN | `[EXECUTADO]` pelo usuário |
 | auditoria v2.0.1 | `docs/evidence/F5/ADERENCIA-V2.0.1.md` | SHA-256 igual ao original fornecido | `[VERIFICADO]` |
-| pacote documental | nenhum código/teste/CI alterado | escopo exato no gate | `[DESCONHECIDO]` até aplicação na branch Q2 |
-| CI do Q1 | `hotfix/2.0.2` publicada | consulta GitHub Actions pelo SHA da hotfix | `[DESCONHECIDO]` até gate Q2 |
+| pacote documental | nenhum código/teste/CI alterado | escopo exato no gate | `[EXECUTADO]` — gate Q2 GREEN |
+| CI do Q1 | `hotfix/2.0.2` publicada | consulta GitHub Actions pelo SHA da hotfix | `[EXECUTADO]` — run 36143782068 GREEN |

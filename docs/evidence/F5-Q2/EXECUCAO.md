@@ -10,12 +10,15 @@ Data: 2026-09-25
 - `[EXECUTADO]` promoção documental do Q1 construída somente a partir da saída GREEN e do fechamento fornecidos pelo usuário.
 - `[EXECUTADO]` checagens estáticas do candidate: escopo, conteúdo obrigatório, referências de testes, links/caminhos, espaços finais, quebra final e ausência de mudanças em código.
 
-## Não executado
+## Executado pelo usuário
 
-- `[DESCONHECIDO]` estado Git da branch Q2 e `git diff --check` real após aplicação do pacote.
-- `[DESCONHECIDO]` CI público da `hotfix/2.0.2` no momento do gate.
+- `[EXECUTADO: gate F5-Q2 · 2026-09-25]` `F5_Q2_PRECONDITIONS_GREEN`, `F5_Q2_DOCS_GREEN`, `F5_Q2_HISTORY_GREEN`, `F5_Q1_CI_GREEN`, `=== F5-Q2 GREEN ===` e `Resultado: exit code 0`.
+- `[EXECUTADO: gate F5-Q2 · 2026-09-25]` escopo exato de 20 arquivos documentais; conteúdo/referências/testes/auditoria/promoção Q1/links OK.
+- `[EXECUTADO: gate F5-Q2 · 2026-09-25]` histórico Q1 com 5 commits Conventional Commits; CI da `hotfix/2.0.2` no commit `9ab3bbd` em sucesso, run `36143782068`, jobs `frontend`, `backend` e `repository` em sucesso.
+- `[EXECUTADO: fechamento F5-Q2 · 2026-09-25]` seis commits documentais do Q2, merge `--no-ff` da `bugfix/2.0.2-q2-docs` na `hotfix/2.0.2`, push no GitHub e no GitLab.
+- `[EXECUTADO: fechamento F5-Q2 · 2026-09-25]` `HEAD`, `origin/hotfix/2.0.2` e `gitlab/hotfix/2.0.2` iguais a `9dceb9ce2755df6e1784683d7b4c3baa213ba26d`; árvore limpa.
 
-Essas duas lacunas são resolvidas por `VERIFICACAO-USUARIO.md`.
+A saída normalizada está em `SAIDA-GATE.txt` e os três ponteiros do fechamento em `FECHAMENTO.txt`.
 
 ## Saída das checagens locais
 

@@ -322,6 +322,7 @@ Estado dos lotes:
 - F5-P2 — Documentação coerente com a tag (estado das releases, paginação, interpretações, AI_USAGE, CHANGELOG e evidências do F5-L5): GREEN em 2026-09-25.
 - F5-P3 — Freeze da `hotfix/2.0.1` e release `v2.0.1`: freeze GREEN em 2026-09-25 (`docs/evidence/F5-P3/SAIDA-GATE.txt`); a tag `v2.0.1` marca o merge desta versão na `main`, e a verificação pública fica em `docs/evidence/F5-P3/SAIDA-RELEASE.txt`, na `develop`.
 - F5-Q1 — Código e testes da patch `2.0.2` (E2–E5 e remoção D1), na `hotfix/2.0.2`: GREEN em 2026-09-25 (`docs/evidence/F5-Q1/SAIDA-GATE.txt`); 177 testes unitários/BDD, 52 de integração, JaCoCo 95,17%, BDD 12/12 e Docker/API real GREEN.
+- F5-Q2 — Documentação e promoção da patch `2.0.2` (E1/E2, ADR D1, CHANGELOG, AI_USAGE e auditoria `v2.0.1`): GREEN em 2026-09-25 (`docs/evidence/F5-Q2/SAIDA-GATE.txt`); CI do Q1 GREEN e fechamento Gitflow da `hotfix/2.0.2` registrado em `docs/evidence/F5-Q2/FECHAMENTO.txt`.
 
 ### Resumo por lote
 
