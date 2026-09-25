@@ -2,7 +2,10 @@
 
 Data: 2026-09-25
 
-Estado: **CANDIDATE**, aguardando o gate local.
+Estado: **GREEN** (gate local em 2026-09-25, 9h00; saída em `SAIDA-GATE.txt`).
+
+- CI da `hotfix/2.0.1` com o F5-P1: run 36131837374, 3 jobs e o passo `Imagem Docker do backend` em sucesso.
+- Aviso de sobreposição: a `develop` alterou só `docs/evidence/F5/SAIDA-RELEASE.txt` e `VERIFICACAO-RELEASE.md` desde a `v2.0.0`; nenhum arquivo em comum com a `hotfix`.
 
 Escopo: lote F5-P2 de `docs/governance/PLANO-CORRECAO-RELEASE-2.0.1.md` (documentação coerente com a tag), mais a promoção do F5-P1, na `hotfix/2.0.1`.
 
