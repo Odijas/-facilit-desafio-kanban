@@ -1,0 +1,20 @@
+=== MAIN, TAG E DEVELOP ===
+   main 83850ffa28ec3f48535c979d260ec7bf4f7e74e9 = v2.0.1; hotfix/2.0.1 b2eee6d4ee52c9b7e0d9a5aa62bcb71e0f6a244c; develop b2653dd54d2cbe59409dbc22777194eff0f66407 contém a hotfix
+F5_P3_RELEASE_REFS_GREEN
+=== GITHUB PÚBLICO ===
+   GitHub publicado: main, develop, hotfix/2.0.1 e v2.0.1 (28 refs listadas)
+F5_P3_RELEASE_GITHUB_GREEN
+=== CI DA MAIN ===
+   [1] in_progress:None 36133984092 https://github.com/Odijas/facilit-desafio-kanban/actions/runs/36133984092
+   [2] in_progress:None 36133984092 https://github.com/Odijas/facilit-desafio-kanban/actions/runs/36133984092
+   [3] in_progress:None 36133984092 https://github.com/Odijas/facilit-desafio-kanban/actions/runs/36133984092
+   [4] in_progress:None 36133984092 https://github.com/Odijas/facilit-desafio-kanban/actions/runs/36133984092
+   [5] completed:success 36133984092 https://github.com/Odijas/facilit-desafio-kanban/actions/runs/36133984092
+   {'backend': 'success', 'repository': 'success', 'frontend': 'success'}
+F5_P3_RELEASE_CI_GREEN
+=== PÁGINA DO REPOSITÓRIO E CONTEÚDO DA TAG ===
+   público, branch padrão main
+   README, CHANGELOG e GATE do F5-P3 na tag com o estado da release
+F5_P3_RELEASE_PAGE_GREEN
+=== F5-P3 RELEASE GREEN ===
+Resultado: exit code 0
