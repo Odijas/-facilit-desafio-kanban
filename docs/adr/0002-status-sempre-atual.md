@@ -28,7 +28,7 @@ Um problema menor somava-se a isso: o `Clock` era UTC. Das 21h à meia-noite em 
    - grava status, atraso, % e a data com `UPDATE … WHERE schedule_calculated_on < hoje`.
    - Uma gravação concorrente mais nova prevalece, e repetir o recálculo não muda nada (idempotente).
 4. **Quando roda.**
-   - No início de `get`, `list`, `listByStatus`, `search` e `indicators`, e portanto também em `update`, `transition` e `delete`, que leem o projeto por `get`.
+   - No início de `get`, `search` e `indicators`, e portanto também em `update`, `transition` e `delete`, que leem o projeto por `get`.
    - Na subida (`ApplicationReadyEvent`).
    - À meia-noite do fuso de negócio (`@Scheduled`, `APP_SCHEDULE_REFRESH_CRON`).
    - A verificação nas leituras é uma consulta indexada que normalmente não devolve linhas.
@@ -92,7 +92,7 @@ sequenceDiagram
 
 | Nível | Teste | O que prova |
 |---|---|---|
-| Domínio | `ProjectStatusTransitionTest.doesNotLetStaleInProgressBypassTheInProgressToOverdueBlock`, `appliesOverdueRowWhenStoredInProgressIsStale`, `treatsStaleNotStartedAsOverdueOnceThePlannedStartHasPassed` | a transição parte do status de hoje |
+| Domínio | `ProjectStatusTransitionTest.line05DoesNotLetStaleInProgressBypassTheInProgressToOverdueBlock`, `line05BlocksInProgressToOverdueWhenDatesDoNotRecalculateAsOverdue`, `line02TreatsStaleNotStartedAsOverdueOnceThePlannedStartHasPassed` | a transição parte do status de hoje |
 | Aplicação | `ProjectScheduleRefresherTest` (relógio que avança) | Em andamento → Atrasado após 10 dias (8 dias de atraso, 0%); listagem, filtro e indicadores; concluído intocado; idempotência; mais de um lote; fuso |
 | Integração | `ScheduleFreshnessIT` (PostgreSQL real) | leitura recalcula; `updatedAt` intacto; `schedule_calculated_on` = hoje; filtros e indicadores |
 | Migração | `ScheduleCalculationDateMigrationIT` | V6 sobre banco V1–V5 com dados: preenchimento pela data UTC da última gravação, `NOT NULL` e índice |
