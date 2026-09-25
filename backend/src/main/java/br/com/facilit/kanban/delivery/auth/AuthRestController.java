@@ -1,7 +1,10 @@
 package br.com.facilit.kanban.delivery.auth;
 
 import br.com.facilit.kanban.application.common.Actor;
+import br.com.facilit.kanban.delivery.common.ApiExamples;
 import br.com.facilit.kanban.infrastructure.security.AuthenticatedActorResolver;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -45,7 +48,8 @@ public class AuthRestController {
     }
 
     @GetMapping("/csrf")
-    public CsrfResponse csrf(CsrfToken csrfToken) {
+    // O token vem do filtro de CSRF, não do cliente: fica fora do OpenAPI.
+    public CsrfResponse csrf(@Parameter(hidden = true) CsrfToken csrfToken) {
         csrfToken.getToken();
         return new CsrfResponse(csrfToken.getHeaderName(), "XSRF-TOKEN");
     }
@@ -78,14 +82,19 @@ public class AuthRestController {
     }
 
     public record LoginRequest(
-            @NotBlank @Email String email,
-            @NotBlank String password) {
+            @NotBlank @Email @Schema(example = ApiExamples.RESPONSIBLE_EMAIL) String email,
+            @NotBlank @Schema(example = ApiExamples.PASSWORD, accessMode = Schema.AccessMode.WRITE_ONLY) String password) {
     }
 
-    public record CsrfResponse(String headerName, String cookieName) {
+    public record CsrfResponse(
+            @Schema(example = "X-XSRF-TOKEN") String headerName,
+            @Schema(example = "XSRF-TOKEN") String cookieName) {
     }
 
-    public record AuthResponse(String email, List<String> authorities, String responsibleId) {
+    public record AuthResponse(
+            @Schema(example = ApiExamples.RESPONSIBLE_EMAIL) String email,
+            List<String> authorities,
+            @Schema(example = ApiExamples.RESPONSIBLE_ID, description = "Nulo para o administrador") String responsibleId) {
 
         static AuthResponse from(Authentication authentication, Actor actor) {
             List<String> authorities = authentication.getAuthorities().stream()

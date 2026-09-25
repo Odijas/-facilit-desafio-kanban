@@ -1,11 +1,12 @@
 package br.com.facilit.kanban.delivery.rest;
 
 import br.com.facilit.kanban.application.project.ProjectIndicators;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
 public record ProjectIndicatorsResponse(
-        long totalProjects,
-        long delayedProjects,
+        @Schema(example = "12") long totalProjects,
+        @Schema(example = "3", description = "Projetos com status Atrasado hoje") long delayedProjects,
         List<StatusIndicatorResponse> byStatus) {
 
     static ProjectIndicatorsResponse from(ProjectIndicators indicators) {
@@ -21,8 +22,8 @@ public record ProjectIndicatorsResponse(
     }
 
     public record StatusIndicatorResponse(
-            String status,
-            long projectCount,
-            double averageDelayDays) {
+            @Schema(example = "OVERDUE") String status,
+            @Schema(example = "3") long projectCount,
+            @Schema(example = "4.5", description = "Média de dias de atraso dos projetos do status") double averageDelayDays) {
     }
 }

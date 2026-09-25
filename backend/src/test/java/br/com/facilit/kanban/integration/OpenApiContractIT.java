@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -23,7 +24,8 @@ import org.testcontainers.utility.DockerImageName;
 
 /**
  * Contrato do OpenAPI: toda operação REST documenta suas respostas de erro no formato real
- * ({@code application/problem+json}, código estável e exemplo).
+ * ({@code application/problem+json}, código estável e exemplo) e traz exemplo de parâmetros, de corpo e de resposta
+ * de sucesso.
  */
 @Testcontainers
 @SpringBootTest(
@@ -34,6 +36,8 @@ class OpenApiContractIT {
     private static final String PROBLEM_JSON = "application/problem+json";
     private static final Set<String> HTTP_METHODS = Set.of("get", "post", "put", "patch", "delete");
     private static final Set<String> PUBLIC_PATHS = Set.of("/api/v1/health", "/api/v1/auth/csrf", "/api/v1/auth/login");
+    private static final String SCHEMA_REF_PREFIX = "#/components/schemas/";
+    private static final int REST_OPERATIONS = 26;
 
     @Container
     @ServiceConnection
@@ -89,6 +93,46 @@ class OpenApiContractIT {
     }
 
     @Test
+    void everyRestOperationHasExamplesForParametersRequestBodyAndSuccessResponses() {
+        JsonNode docs = apiDocs();
+        JsonNode schemas = docs.path("components").path("schemas");
+        List<String> missing = new ArrayList<>();
+        int operations = 0;
+
+        for (Map.Entry<String, JsonNode> path : docs.path("paths").properties()) {
+            if (!path.getKey().startsWith("/api/v1/")) {
+                continue;
+            }
+            for (Map.Entry<String, JsonNode> method : path.getValue().properties()) {
+                if (!HTTP_METHODS.contains(method.getKey())) {
+                    continue;
+                }
+                operations++;
+                String operation = method.getKey().toUpperCase(Locale.ROOT) + " " + path.getKey();
+                for (JsonNode parameter : method.getValue().path("parameters")) {
+                    if (!hasExample(parameter)) {
+                        missingExamples(parameter.path("schema"), schemas, "", new HashSet<>()).forEach(where ->
+                                missing.add(operation + " parâmetro " + parameter.path("name").asText() + where));
+                    }
+                }
+                JsonNode requestBody = method.getValue().path("requestBody");
+                if (!requestBody.isMissingNode()) {
+                    checkContent(operation + " corpo", requestBody.path("content"), schemas, missing);
+                }
+                for (Map.Entry<String, JsonNode> response : method.getValue().path("responses").properties()) {
+                    if (response.getKey().startsWith("2")) {
+                        checkContent(operation + " resposta " + response.getKey(),
+                                response.getValue().path("content"), schemas, missing);
+                    }
+                }
+            }
+        }
+
+        assertThat(operations).as("operações REST em /api/v1").isEqualTo(REST_OPERATIONS);
+        assertThat(missing).as("exemplos ausentes no OpenAPI").isEmpty();
+    }
+
+    @Test
     void transitionDocumentsBlockedConfirmationAndBusinessRuleErrors() {
         JsonNode docs = apiDocs();
         JsonNode examples = docs.at("/paths/~1api~1v1~1projects~1{id}~1status/patch/responses/422/content")
@@ -128,6 +172,60 @@ class OpenApiContractIT {
                 .contains("requestInterceptor")
                 .contains("XSRF-TOKEN=")
                 .contains("request.headers['X-XSRF-TOKEN']");
+    }
+
+    private static void checkContent(String where, JsonNode content, JsonNode schemas, List<String> missing) {
+        // Sem "content" (por exemplo, 204 No Content) não há corpo para exemplificar.
+        for (Map.Entry<String, JsonNode> media : content.properties()) {
+            if (!hasExample(media.getValue())) {
+                missingExamples(media.getValue().path("schema"), schemas, "", new HashSet<>()).forEach(field ->
+                        missing.add(where + " (" + media.getKey() + ")" + field));
+            }
+        }
+    }
+
+    /**
+     * Campos sem exemplo em um schema. Um schema está exemplificado quando tem {@code example} próprio, ou quando é
+     * referência, lista ou objeto cujas partes estão todas exemplificadas (é assim que o Swagger UI monta o exemplo).
+     */
+    private static List<String> missingExamples(JsonNode schema, JsonNode schemas, String where, Set<String> visiting) {
+        if (schema.isMissingNode() || schema.isNull()) {
+            return List.of(where + " sem schema");
+        }
+        if (hasExample(schema)) {
+            return List.of();
+        }
+        if (schema.has("$ref")) {
+            String name = schema.get("$ref").asText().substring(SCHEMA_REF_PREFIX.length());
+            if (!visiting.add(name)) {
+                return List.of();
+            }
+            List<String> result = missingExamples(schemas.path(name), schemas, where + " → " + name, visiting);
+            visiting.remove(name);
+            return result;
+        }
+        if (schema.has("items")) {
+            return missingExamples(schema.get("items"), schemas, where + "[]", visiting);
+        }
+        List<String> result = new ArrayList<>();
+        for (String composition : List.of("allOf", "oneOf", "anyOf")) {
+            for (JsonNode part : schema.path(composition)) {
+                result.addAll(missingExamples(part, schemas, where, visiting));
+            }
+        }
+        JsonNode properties = schema.path("properties");
+        for (Map.Entry<String, JsonNode> property : properties.properties()) {
+            result.addAll(missingExamples(property.getValue(), schemas, where + "." + property.getKey(), visiting));
+        }
+        boolean composed = schema.has("allOf") || schema.has("oneOf") || schema.has("anyOf");
+        if (!composed && properties.isEmpty()) {
+            return List.of(where + " sem exemplo");
+        }
+        return result;
+    }
+
+    private static boolean hasExample(JsonNode node) {
+        return node.has("example") || node.has("examples");
     }
 
     private JsonNode apiDocs() {
