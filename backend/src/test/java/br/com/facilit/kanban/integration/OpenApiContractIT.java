@@ -116,6 +116,20 @@ class OpenApiContractIT {
         }
     }
 
+    @Test
+    void swaggerUiSendsTheCsrfTokenFromTheCookie() {
+        // Com springdoc.swagger-ui.csrf.enabled, o springdoc injeta no swagger-initializer.js um requestInterceptor
+        // que copia o cookie XSRF-TOKEN para o cabeçalho X-XSRF-TOKEN em chamadas da mesma origem.
+        ResponseEntity<String> initializer = restTemplate.getForEntity(
+                "http://localhost:" + port + "/swagger-ui/swagger-initializer.js", String.class);
+
+        assertThat(initializer.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(initializer.getBody())
+                .contains("requestInterceptor")
+                .contains("XSRF-TOKEN=")
+                .contains("request.headers['X-XSRF-TOKEN']");
+    }
+
     private JsonNode apiDocs() {
         ResponseEntity<JsonNode> response = restTemplate.getForEntity(
                 "http://localhost:" + port + "/api-docs", JsonNode.class);
