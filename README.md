@@ -130,6 +130,15 @@ Serviços:
 - métricas Prometheus: `http://localhost:8080/actuator/prometheus` (HTTP Basic com a credencial técnica de métricas)
 - PostgreSQL: só na rede interna do Compose (`db:5432`)
 
+Usar a API pelo Swagger UI (a API exige sessão e token CSRF em toda escrita, inclusive no login):
+
+1. `GET /api/v1/auth/csrf` → **Try it out** → **Execute**. O navegador guarda o cookie `XSRF-TOKEN`, e o Swagger UI passa a enviá-lo no cabeçalho `X-XSRF-TOKEN` (`springdoc.swagger-ui.csrf.enabled`).
+2. `POST /api/v1/auth/login` com `{"email": "...", "password": "..."}` do administrador definido no `.env`.
+3. `GET /api/v1/auth/csrf` de novo: o login troca o token, e esta chamada entrega o novo.
+4. Qualquer operação. A sessão segue no cookie `JSESSIONID`.
+
+No GraphiQL, faça o passo 1 a 3 pelo Swagger UI (mesma origem) e informe no painel **Headers** `{"X-XSRF-TOKEN": "<valor do cookie XSRF-TOKEN>"}`.
+
 ### Observabilidade (opcional)
 
 Preencha `METRICS_PASSWORD` e `GRAFANA_ADMIN_PASSWORD` no `.env` (mínimo de 16 caracteres para `METRICS_PASSWORD`; gere com `python3 -c 'import secrets; print(secrets.token_urlsafe(32))'`) e suba com a sobreposição:
@@ -299,6 +308,7 @@ Estado dos lotes:
 - F5-L3 — Camadas de teste completas e transação por caso de uso: GREEN em 2026-09-24.
 - F5-L4 — Etapa 3, BDD e cobertura: GREEN em 2026-09-24.
 - F5-L5 — Release `v2.0.0`: roteiro, auditoria e gates em `docs/evidence/F5/`; a tag só é criada após o freeze GREEN.
+- F5-C1 — Entrega executável (build da imagem do backend e CSRF no Swagger UI), correção na `release/2.0.0` conforme `docs/governance/PLANO-CORRECAO-RELEASE-2.0.0.md`: CANDIDATE em 2026-09-24, aguardando gate local.
 
 ### Resumo por lote
 
