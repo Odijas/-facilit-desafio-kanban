@@ -2,16 +2,21 @@ package br.com.facilit.kanban.delivery.graphql;
 
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
+import br.com.facilit.kanban.application.project.ProjectDeadlineIndicator;
+import br.com.facilit.kanban.application.project.ProjectDeadlineIndicators;
 import br.com.facilit.kanban.application.project.ProjectFilter;
+import br.com.facilit.kanban.application.project.ProjectGroupIndicator;
 import br.com.facilit.kanban.application.project.ProjectIndicators;
 import br.com.facilit.kanban.application.project.ProjectService;
 import br.com.facilit.kanban.application.project.SaveProjectCommand;
+import br.com.facilit.kanban.delivery.common.InputLimits;
 import br.com.facilit.kanban.domain.project.Project;
 import br.com.facilit.kanban.domain.project.ProjectStatus;
 import br.com.facilit.kanban.infrastructure.security.AuthenticatedActorResolver;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.util.List;
@@ -75,6 +80,25 @@ public class ProjectGraphQlController {
         return ProjectIndicatorsGraphQlResponse.from(service.indicators());
     }
 
+    @QueryMapping
+    public List<ProjectGroupIndicatorGraphQlResponse> projectIndicatorsBySecretariat() {
+        return service.indicatorsBySecretariat().stream()
+                .map(ProjectGroupIndicatorGraphQlResponse::from)
+                .toList();
+    }
+
+    @QueryMapping
+    public List<ProjectGroupIndicatorGraphQlResponse> projectIndicatorsByResponsible() {
+        return service.indicatorsByResponsible().stream()
+                .map(ProjectGroupIndicatorGraphQlResponse::from)
+                .toList();
+    }
+
+    @QueryMapping
+    public ProjectDeadlinesGraphQlResponse projectDeadlines(@Argument Integer withinDays) {
+        return ProjectDeadlinesGraphQlResponse.from(service.deadlines(withinDays == null ? 7 : withinDays));
+    }
+
     @MutationMapping
     public ProjectGraphQlResponse createProject(
             @Argument @Valid ProjectGraphQlInput input,
@@ -97,10 +121,12 @@ public class ProjectGraphQlController {
     public ProjectGraphQlResponse transitionProject(
             @Argument String id,
             @Argument ProjectStatus status,
+            @Argument Boolean confirm,
             Principal principal) {
         return ProjectGraphQlResponse.from(service.transition(
                 UUID.fromString(id),
                 status,
+                Boolean.TRUE.equals(confirm),
                 actorResolver.resolve(principal)));
     }
 
@@ -119,8 +145,8 @@ public class ProjectGraphQlController {
     }
 
     public record ProjectGraphQlInput(
-            @NotBlank String name,
-            @NotEmpty List<@NotBlank String> responsibleIds,
+            @NotBlank @Size(max = InputLimits.NAME_MAX_LENGTH) String name,
+            @NotEmpty @Size(max = InputLimits.RESPONSIBLES_MAX) List<@NotBlank String> responsibleIds,
             String plannedStart,
             String plannedEnd,
             String actualStart,
@@ -214,6 +240,53 @@ public class ProjectGraphQlController {
             String status,
             long projectCount,
             double averageDelayDays) {
+    }
+
+    public record ProjectGroupIndicatorGraphQlResponse(
+            String id,
+            long projectCount,
+            double averageDelayDays) {
+
+        static ProjectGroupIndicatorGraphQlResponse from(ProjectGroupIndicator indicator) {
+            return new ProjectGroupIndicatorGraphQlResponse(
+                    indicator.id().toString(),
+                    indicator.projectCount(),
+                    indicator.averageDelayDays());
+        }
+    }
+
+    public record ProjectDeadlinesGraphQlResponse(
+            int withinDays,
+            String from,
+            String to,
+            List<ProjectDeadlineGraphQlResponse> projects) {
+
+        static ProjectDeadlinesGraphQlResponse from(ProjectDeadlineIndicators indicators) {
+            return new ProjectDeadlinesGraphQlResponse(
+                    indicators.withinDays(),
+                    indicators.from().toString(),
+                    indicators.to().toString(),
+                    indicators.projects().stream()
+                            .map(ProjectDeadlineGraphQlResponse::from)
+                            .toList());
+        }
+    }
+
+    public record ProjectDeadlineGraphQlResponse(
+            String projectId,
+            String projectName,
+            String status,
+            String plannedEnd,
+            long daysUntilDeadline) {
+
+        static ProjectDeadlineGraphQlResponse from(ProjectDeadlineIndicator indicator) {
+            return new ProjectDeadlineGraphQlResponse(
+                    indicator.projectId().toString(),
+                    indicator.projectName(),
+                    indicator.status().name(),
+                    indicator.plannedEnd().toString(),
+                    indicator.daysUntilDeadline());
+        }
     }
 
 }

@@ -1,0 +1,46 @@
+=== PRÉ-CONDIÇÕES ===
+   28 arquivos alterados, todos do pacote F5-C2; frontend intocado
+   branch bugfix/2.0.0-c2-testes-validacao sobre a release/2.0.0 com o F5-C1 (e986aba)
+F5_C2_PRECONDITIONS_GREEN
+=== BACKEND: CLEAN VERIFY + BDD + JACOCO ===
+   unitários/BDD: 25 relatórios, 174 testes, 0 falhas/erros/ignorados
+   integração: 12 relatórios, 49 testes, 0 falhas/erros/ignorados
+   ProjectRestControllerTest: 20 testes OK
+   ResponsibleRestControllerTest: 10 testes OK
+   SecretariatRestControllerTest: 7 testes OK
+   ProjectGraphQlControllerTest: 10 testes OK
+   ProjectFilterTest: 3 testes OK
+   OpenApiContractIT: 4 testes OK
+   BDD: 12 cenários, 48 passos aprovados; métricas conferidas nas 12 linhas
+   JaCoCo (unitários + integração): 95.62% de linhas (1679/1756)
+F5_C2_BACKEND_GREEN
+=== ESTÁTICA ===
+   28 arquivos do lote OK; BDD com métricas, limites, README e F5-C1 GREEN
+F5_C2_STATIC_GREEN
+=== DOCKER: BANCO NOVO + MIGRATIONS 1–7 ===
+   banco novo (facilit-kanban-f5c2); migrations V1 2 3 4 5 6 7; imagem construída com o Dockerfile do F5-C1
+F5_C2_DOCKER_GREEN
+=== API: LIMITES DE ENTRADA (REST, GRAPHQL E OPENAPI) ===
+  ok 1 passo 1: GET /api/v1/auth/csrf
+  ok 2 login ADMIN
+  ok 3 token novo após o login
+  ok 4 responsável com e-mail de 255 → 400
+  ok 5 responsável com nome de 201 → 400
+  ok 6 responsável no limite (nome 200, e-mail 254) → 201
+  ok 7 projeto com nome de 201 → 400
+  ok 8 projeto com 51 responsáveis → 400
+  ok 9 projeto no limite (nome 200) → 201
+  ok 10 busca com texto de 101 → 400
+  ok 11 GraphQL secretaria com nome de 201
+  ok 12 OpenAPI
+   OpenAPI com maxLength 200/254 e maxItems 50
+  ok 13 excluir projeto
+  ok 14 excluir responsável
+F5_C2_API_GREEN
+=== CI DA release/2.0.0 COM O F5-C1 ===
+   [1] e986aba in_progress:None 36080772265
+   [2] e986aba completed:success 36080772265
+   jobs frontend/backend/repository: success · passo 'Imagem Docker do backend (mesmo build do docker compose)': success · https://github.com/Odijas/facilit-desafio-kanban/actions/runs/36080772265/job/107901997204
+F5_C1_CI_GREEN
+=== F5-C2 GREEN ===
+Resultado: exit code 0

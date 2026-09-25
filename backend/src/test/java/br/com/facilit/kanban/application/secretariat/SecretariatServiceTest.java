@@ -8,6 +8,7 @@ import br.com.facilit.kanban.application.common.ConflictException;
 import br.com.facilit.kanban.application.common.ForbiddenOperationException;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
+import br.com.facilit.kanban.application.support.DirectTransactionRunner;
 import br.com.facilit.kanban.application.support.InMemoryResponsibleRepository;
 import br.com.facilit.kanban.application.support.InMemorySecretariatRepository;
 import br.com.facilit.kanban.domain.common.AuditMetadata;
@@ -33,6 +34,7 @@ class SecretariatServiceTest {
         service = new SecretariatService(
                 secretariatRepository,
                 responsibleRepository,
+                new DirectTransactionRunner(),
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -66,7 +68,7 @@ class SecretariatServiceTest {
 
         assertThatThrownBy(() -> service.delete(secretariat.id(), Actor.admin()))
                 .isInstanceOf(ConflictException.class)
-                .hasMessage("Secretariat is assigned to at least one responsible");
+                .hasMessage("A secretaria tem responsáveis vinculados e não pode ser excluída.");
     }
 
     @Test

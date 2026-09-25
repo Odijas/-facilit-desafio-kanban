@@ -1,5 +1,6 @@
 package br.com.facilit.kanban.infrastructure.config;
 
+import br.com.facilit.kanban.application.common.TransactionRunner;
 import br.com.facilit.kanban.application.project.ProjectRepository;
 import br.com.facilit.kanban.application.project.ProjectService;
 import br.com.facilit.kanban.application.responsible.ResponsibleCredentialRepository;
@@ -11,8 +12,11 @@ import br.com.facilit.kanban.application.secretariat.SecretariatService;
 import br.com.facilit.kanban.application.health.HealthQuery;
 import br.com.facilit.kanban.domain.project.ProjectScheduleCalculator;
 import java.time.Clock;
+import java.time.ZoneId;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration(proxyBeanMethods = false)
 public class ApplicationBeans {
@@ -27,9 +31,19 @@ public class ApplicationBeans {
         return new ProjectScheduleCalculator();
     }
 
+    /**
+     * Relógio da aplicação. "Hoje" das regras de status é a data no fuso de negócio (padrão
+     * America/Sao_Paulo), não a data UTC; instantes de auditoria continuam absolutos. Fuso inválido
+     * impede a subida.
+     */
     @Bean
-    Clock applicationClock() {
-        return Clock.systemUTC();
+    Clock applicationClock(@Value("${app.time-zone}") String timeZone) {
+        return Clock.system(ZoneId.of(timeZone));
+    }
+
+    @Bean
+    TransactionRunner transactionRunner(PlatformTransactionManager transactionManager) {
+        return new SpringTransactionRunner(transactionManager);
     }
 
     @Bean
@@ -38,12 +52,14 @@ public class ApplicationBeans {
             SecretariatRepository secretariatRepository,
             ProjectRepository projectRepository,
             ResponsibleCredentialRepository responsibleCredentialRepository,
+            TransactionRunner transactionRunner,
             Clock applicationClock) {
         return new ResponsibleService(
                 responsibleRepository,
                 secretariatRepository,
                 projectRepository,
                 responsibleCredentialRepository,
+                transactionRunner,
                 applicationClock);
     }
 
@@ -51,10 +67,12 @@ public class ApplicationBeans {
     ResponsibleCredentialService responsibleCredentialService(
             ResponsibleRepository responsibleRepository,
             ResponsibleCredentialRepository responsibleCredentialRepository,
+            TransactionRunner transactionRunner,
             Clock applicationClock) {
         return new ResponsibleCredentialService(
                 responsibleRepository,
                 responsibleCredentialRepository,
+                transactionRunner,
                 applicationClock);
     }
 
@@ -62,8 +80,9 @@ public class ApplicationBeans {
     SecretariatService secretariatService(
             SecretariatRepository secretariatRepository,
             ResponsibleRepository responsibleRepository,
+            TransactionRunner transactionRunner,
             Clock applicationClock) {
-        return new SecretariatService(secretariatRepository, responsibleRepository, applicationClock);
+        return new SecretariatService(secretariatRepository, responsibleRepository, transactionRunner, applicationClock);
     }
 
     @Bean
@@ -71,11 +90,13 @@ public class ApplicationBeans {
             ProjectRepository projectRepository,
             ResponsibleRepository responsibleRepository,
             ProjectScheduleCalculator projectScheduleCalculator,
+            TransactionRunner transactionRunner,
             Clock applicationClock) {
         return new ProjectService(
                 projectRepository,
                 responsibleRepository,
                 projectScheduleCalculator,
+                transactionRunner,
                 applicationClock);
     }
 }

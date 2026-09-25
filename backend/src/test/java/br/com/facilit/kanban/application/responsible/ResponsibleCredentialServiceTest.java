@@ -7,6 +7,7 @@ import br.com.facilit.kanban.application.common.Actor;
 import br.com.facilit.kanban.application.common.ConflictException;
 import br.com.facilit.kanban.application.common.ForbiddenOperationException;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
+import br.com.facilit.kanban.application.support.DirectTransactionRunner;
 import br.com.facilit.kanban.application.support.InMemoryResponsibleCredentialRepository;
 import br.com.facilit.kanban.application.support.InMemoryResponsibleRepository;
 import br.com.facilit.kanban.domain.common.AuditMetadata;
@@ -40,6 +41,7 @@ class ResponsibleCredentialServiceTest {
         service = new ResponsibleCredentialService(
                 responsibleRepository,
                 credentialRepository,
+                new DirectTransactionRunner(),
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -72,10 +74,10 @@ class ResponsibleCredentialServiceTest {
     void rejectsShortAndOversizedPasswords() {
         assertThatThrownBy(() -> service.setPassword(responsible.id(), "curta", Actor.admin()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("password must have at least 12 characters");
+                .hasMessage("A senha deve ter ao menos 12 caracteres.");
         assertThatThrownBy(() -> service.setPassword(responsible.id(), "\u00e7".repeat(37), Actor.admin()))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("password must have at most 72 bytes");
+                .hasMessage("A senha deve ter no máximo 72 bytes.");
     }
 
     @Test
@@ -84,7 +86,7 @@ class ResponsibleCredentialServiceTest {
 
         assertThatThrownBy(() -> service.setPassword(responsible.id(), VALID_PASSWORD, Actor.admin()))
                 .isInstanceOf(ConflictException.class)
-                .hasMessage("Email is already used by another login");
+                .hasMessage("Este e-mail já é usado por outro login.");
     }
 
     @Test
@@ -93,9 +95,9 @@ class ResponsibleCredentialServiceTest {
 
         assertThatThrownBy(() -> service.setPassword(unknown, VALID_PASSWORD, Actor.admin()))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessage("Responsible not found: " + unknown);
+                .hasMessage("Responsável não encontrado: " + unknown);
         assertThatThrownBy(() -> service.revoke(responsible.id(), Actor.admin()))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessage("Credentials not found for responsible: " + responsible.id());
+                .hasMessage("Credencial não encontrada para o responsável: " + responsible.id());
     }
 }

@@ -7,12 +7,17 @@ import br.com.facilit.kanban.application.common.Actor;
 import br.com.facilit.kanban.application.common.ForbiddenOperationException;
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.ResourceNotFoundException;
+import br.com.facilit.kanban.application.support.CapturedBusinessLog;
+import br.com.facilit.kanban.application.support.DirectTransactionRunner;
 import br.com.facilit.kanban.application.support.InMemoryProjectRepository;
 import br.com.facilit.kanban.application.support.InMemoryResponsibleRepository;
 import br.com.facilit.kanban.domain.common.AuditMetadata;
+import br.com.facilit.kanban.domain.common.BusinessRuleException;
+import br.com.facilit.kanban.domain.project.ConfirmationRequiredException;
 import br.com.facilit.kanban.domain.project.Project;
 import br.com.facilit.kanban.domain.project.ProjectScheduleCalculator;
 import br.com.facilit.kanban.domain.project.ProjectStatus;
+import br.com.facilit.kanban.domain.project.TransitionBlockedException;
 import br.com.facilit.kanban.domain.responsible.Responsible;
 import java.time.Clock;
 import java.time.Instant;
@@ -48,6 +53,7 @@ class ProjectServiceTest {
                 projectRepository,
                 responsibleRepository,
                 new ProjectScheduleCalculator(),
+                new DirectTransactionRunner(),
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -68,7 +74,7 @@ class ProjectServiceTest {
         assertThat(updated.status()).isEqualTo(ProjectStatus.IN_PROGRESS);
         assertThat(updated.audit().createdAt()).isEqualTo(created.audit().createdAt());
 
-        Project completed = service.transition(created.id(), ProjectStatus.COMPLETED, Actor.admin());
+        Project completed = service.transition(created.id(), ProjectStatus.COMPLETED, false, Actor.admin());
         assertThat(completed.status()).isEqualTo(ProjectStatus.COMPLETED);
         assertThat(completed.dates().actualEnd()).isEqualTo(TODAY);
         assertThat(completed.audit().createdAt()).isEqualTo(created.audit().createdAt());
@@ -122,7 +128,72 @@ class ProjectServiceTest {
                         TODAY,
                         null))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("plannedTo must not be before plannedFrom");
+                .hasMessage("Período inválido: plannedTo não pode ser anterior a plannedFrom.");
+    }
+
+    @Test
+    void rejectsActualDatesAfterTodayOnCreateAndUpdate() {
+        SaveProjectCommand futureStart = new SaveProjectCommand(
+                "Portal",
+                Set.of(responsibleId),
+                TODAY,
+                TODAY.plusDays(10),
+                TODAY.plusDays(1),
+                null);
+
+        assertThatThrownBy(() -> service.create(futureStart, Actor.admin()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageStartingWith("Início realizado (2026-09-23) não pode ser posterior a hoje (2026-09-22)");
+
+        Project created = service.create(command(null), Actor.admin());
+        SaveProjectCommand futureEnd = new SaveProjectCommand(
+                "Portal",
+                Set.of(responsibleId),
+                TODAY,
+                TODAY.plusDays(10),
+                TODAY,
+                TODAY.plusDays(1));
+
+        assertThatThrownBy(() -> service.update(created.id(), futureEnd, Actor.admin()))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessageStartingWith("Término realizado (2026-09-23) não pode ser posterior a hoje (2026-09-22)");
+        assertThat(service.get(created.id())).isEqualTo(created);
+    }
+
+    @Test
+    void clearsRecordedActualStartOnlyWithExplicitConfirmation() {
+        Project started = service.create(command(TODAY), Actor.admin());
+        assertThat(started.status()).isEqualTo(ProjectStatus.IN_PROGRESS);
+
+        assertThatThrownBy(() -> service.transition(started.id(), ProjectStatus.NOT_STARTED, false, Actor.admin()))
+                .isInstanceOf(ConfirmationRequiredException.class);
+        assertThat(service.get(started.id())).isEqualTo(started);
+
+        Project reverted = service.transition(started.id(), ProjectStatus.NOT_STARTED, true, Actor.admin());
+        assertThat(reverted.status()).isEqualTo(ProjectStatus.NOT_STARTED);
+        assertThat(reverted.dates().actualStart()).isNull();
+    }
+
+    @Test
+    void recordsBusinessEventsWithIdentifiersOnlyAndNoPersonalData() {
+        try (CapturedBusinessLog log = CapturedBusinessLog.start()) {
+            Project created = service.create(command(null), Actor.admin());
+            service.transition(created.id(), ProjectStatus.IN_PROGRESS, false, Actor.admin());
+            assertThatThrownBy(() -> service.transition(created.id(), ProjectStatus.OVERDUE, false, Actor.admin()))
+                    .isInstanceOf(TransitionBlockedException.class);
+            service.delete(created.id(), Actor.responsible(responsibleId));
+
+            assertThat(log.messages()).containsExactly(
+                    "evento=projeto.criado id=" + created.id() + " status=NOT_STARTED ator=ADMIN",
+                    "evento=projeto.transicao id=" + created.id()
+                            + " de=NOT_STARTED para=IN_PROGRESS confirmado=false ator=ADMIN",
+                    "evento=projeto.transicao.recusada id=" + created.id()
+                            + " de=IN_PROGRESS para=OVERDUE motivo=TransitionBlockedException ator=ADMIN",
+                    "evento=projeto.excluido id=" + created.id() + " ator=RESPONSIBLE:" + responsibleId);
+            assertThat(String.join("\n", log.messages()))
+                    .doesNotContain("ana@example.com")
+                    .doesNotContain("Ana Silva");
+        }
     }
 
     @Test
@@ -137,7 +208,7 @@ class ProjectServiceTest {
 
         assertThatThrownBy(() -> service.create(command, Actor.admin()))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessage("At least one responsible was not found");
+                .hasMessage("Ao menos um responsável informado não foi encontrado.");
     }
 
     @Test
@@ -145,15 +216,15 @@ class ProjectServiceTest {
         Actor owner = Actor.responsible(responsibleId);
         Project owned = service.create(command(null), owner);
 
-        Project transitioned = service.transition(owned.id(), ProjectStatus.IN_PROGRESS, owner);
+        Project transitioned = service.transition(owned.id(), ProjectStatus.IN_PROGRESS, false, owner);
         assertThat(transitioned.status()).isEqualTo(ProjectStatus.IN_PROGRESS);
         assertThat(service.update(owned.id(), command(TODAY), owner).name()).isEqualTo("Portal");
 
         Actor outsider = Actor.responsible(UUID.randomUUID());
         assertThatThrownBy(() -> service.update(owned.id(), command(TODAY), outsider))
                 .isInstanceOf(ForbiddenOperationException.class)
-                .hasMessage("Responsible users can only manage projects they are assigned to");
-        assertThatThrownBy(() -> service.transition(owned.id(), ProjectStatus.COMPLETED, outsider))
+                .hasMessage("O responsável só pode alterar projetos em que é responsável.");
+        assertThatThrownBy(() -> service.transition(owned.id(), ProjectStatus.COMPLETED, false, outsider))
                 .isInstanceOf(ForbiddenOperationException.class);
         assertThatThrownBy(() -> service.delete(owned.id(), outsider))
                 .isInstanceOf(ForbiddenOperationException.class);

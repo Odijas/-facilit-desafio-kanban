@@ -69,6 +69,8 @@ jobs:
           cache: maven
       - name: Build, testes unitários e de integração (Testcontainers)
         run: mvn -B -ntp clean verify
+      - name: Imagem Docker do backend (mesmo build do docker compose)
+        run: docker build --pull -t facilit-kanban-backend:ci .
 
   repository:
     name: repository

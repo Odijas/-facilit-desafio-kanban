@@ -12,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -50,11 +51,20 @@ public class ProjectJpaEntity {
     @Column(name = "remaining_time_percentage", nullable = false)
     private short remainingTimePercentage;
 
+    @Column(name = "schedule_calculated_on", nullable = false)
+    private LocalDate scheduleCalculatedOn;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    // Wrapper (nulo antes do INSERT): o Spring Data usa a versão nula para saber que a entidade é nova e
+    // chama persist; com a versão preenchida, o Hibernate recusa a gravação de uma versão antiga.
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -76,6 +86,7 @@ public class ProjectJpaEntity {
             LocalDate actualEnd,
             long delayDays,
             int remainingTimePercentage,
+            LocalDate scheduleCalculatedOn,
             Instant createdAt,
             Instant updatedAt,
             Set<ResponsibleJpaEntity> responsibles) {
@@ -88,6 +99,7 @@ public class ProjectJpaEntity {
         this.actualEnd = actualEnd;
         this.delayDays = delayDays;
         this.remainingTimePercentage = (short) remainingTimePercentage;
+        this.scheduleCalculatedOn = scheduleCalculatedOn;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.responsibles.clear();
@@ -130,12 +142,20 @@ public class ProjectJpaEntity {
         return remainingTimePercentage;
     }
 
+    public LocalDate getScheduleCalculatedOn() {
+        return scheduleCalculatedOn;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public Set<ResponsibleJpaEntity> getResponsibles() {

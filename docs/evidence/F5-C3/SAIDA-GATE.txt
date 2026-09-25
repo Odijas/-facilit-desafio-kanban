@@ -1,0 +1,23 @@
+=== PRÉ-CONDIÇÕES ===
+   22 arquivos alterados, todos do pacote F5-C3; nada em backend/, frontend/ ou .github/
+   branch bugfix/2.0.0-c3-documentacao sobre a release/2.0.0 com o F5-C2 (edcbc36)
+F5_C3_PRECONDITIONS_GREEN
+=== ESTÁTICA: CHECAGENS DOCUMENTAIS DO FREEZE + LOTE ===
+   README, AI_USAGE, ADR, auditoria, revisão de segurança, diagramas, links e coleção OK
+   Conventional Commits: 69 commits (sem merges); 1 revert auditado legado aceito
+   22 arquivos do lote OK; README, AI_USAGE, CHANGELOG, roteiro F5 e coleção (27 requisições) OK
+F5_C3_STATIC_GREEN
+=== DOCKER: BANCO NOVO + MIGRATIONS 1–7 ===
+   banco novo (facilit-kanban-f5c3); migrations V1 2 3 4 5 6 7
+F5_C3_DOCKER_GREEN
+=== COLEÇÃO POSTMAN INTEIRA (NEWMAN) ===
+   requisições: 27 (falhas 0) · asserções: 52 (falhas 0) · scripts de teste com erro: 0 · pré-requisição com erro: 0
+F5_C3_NEWMAN_GREEN
+=== CI DA release/2.0.0 COM O F5-C2 ===
+   [1] edcbc36 in_progress:None 36081814889
+   [2] edcbc36 in_progress:None 36081814889
+   [3] edcbc36 completed:success 36081814889
+   jobs frontend/backend/repository: success · passo 'Imagem Docker do backend (mesmo build do docker compose)': success · https://github.com/Odijas/facilit-desafio-kanban/actions/runs/36081814889/job/107905220593
+F5_C2_CI_GREEN
+=== F5-C3 GREEN ===
+Resultado: exit code 0

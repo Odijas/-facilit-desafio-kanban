@@ -17,6 +17,7 @@ API Java para gestão de projetos em quadro Kanban, feita para o Desafio Técnic
 - [Uso de IA](#uso-de-ia)
 - [Limitações e próximos passos](#limitações-e-próximos-passos)
 - [Governança e histórico de entrega](#governança-e-histórico-de-entrega)
+- [Changelog](CHANGELOG.md)
 
 ## Visão geral
 
@@ -25,8 +26,8 @@ API Java para gestão de projetos em quadro Kanban, feita para o Desafio Técnic
 | CRUD de Projeto e Responsável (e-mail único) com Swagger | REST `/api/v1/projects`, `/api/v1/responsibles`; `/swagger-ui.html` e `/api-docs` |
 | Status calculado, dias de atraso e % de tempo restante | domínio puro: `ProjectScheduleCalculator` |
 | Quadro Kanban e transições da tabela, com bloqueio e mensagem clara | `ProjectStatusTransition` + `PATCH /api/v1/projects/{id}/status` |
-| Indicadores (contagem e média de atraso por status) | `GET /api/v1/indicators/projects` e GraphQL `projectIndicators` |
-| Testes JUnit de services, controllers e integração | `backend/src/test` (unitários + ITs com Testcontainers/PostgreSQL) |
+| Indicadores (status, secretaria, responsável e prazos) | REST `/api/v1/indicators/projects*` e GraphQL `projectIndicators*`/`projectDeadlines` |
+| Testes JUnit de services, controllers e integração | `backend/src/test`: services com repositórios em memória e com Mockito; controllers REST e GraphQL isolados com o service simulado; repositório, transações e a tabela de transição pela API com PostgreSQL real (Testcontainers) |
 | Docker Compose (app + banco) | `compose.yaml` |
 | `AI_USAGE.md` | [`AI_USAGE.md`](AI_USAGE.md) |
 | Diferencial — GraphQL | `/graphql` (mesmos casos de uso do REST) |
@@ -55,7 +56,7 @@ flowchart LR
     SEC --> DEL --> APP --> DOM
     INF -. implementa portas .-> APP
   end
-  DB[("PostgreSQL 18.6<br/>Flyway V1–V5")]
+  DB[("PostgreSQL 18.6<br/>Flyway V1–V7")]
   PROM["Prometheus"] --> GRAF["Grafana"]
   UI -- "/api (proxy Vite)" --> SEC
   EXT --> SEC
@@ -64,8 +65,10 @@ flowchart LR
 ```
 
 - **Clean Architecture pragmática.** O domínio não conhece Spring, banco nem HTTP; a aplicação expõe casos de uso e portas, montados em `ApplicationBeans` (composition root). REST e GraphQL chamam os mesmos serviços, sem regra duplicada; controllers e resolvers ficam finos.
-- **Regra de negócio determinística no domínio.** Status, dias de atraso e % de tempo restante são calculados por `ProjectScheduleCalculator` a partir da data de hoje obtida de um `Clock` UTC injetado no `ProjectService`; as transições aplicam só os efeitos da tabela do desafio e recalculam o status, bloqueando quando o resultado difere do pedido.
+- **Regra de negócio determinística no domínio.** Status, dias de atraso e % de tempo restante são calculados por `ProjectScheduleCalculator` a partir da data de hoje obtida de um `Clock` no fuso de negócio (`APP_TIME_ZONE`, padrão `America/Sao_Paulo`) injetado no `ProjectService`; as transições partem do status de hoje, aplicam só os efeitos da tabela do desafio e recalculam o status, bloqueando quando o resultado difere do pedido.
+- **Status sempre atual.** Os valores calculados ficam gravados, com a data do cálculo, para listar e filtrar por índice. Quando o dia muda, os projetos não concluídos são recalculados antes de qualquer leitura e também por agendamento à meia-noite ([ADR 0002](docs/adr/0002-status-sempre-atual.md)).
 - **Persistência.** PostgreSQL com Flyway (schema versionado e `ddl-auto: validate`), índices alinhados às consultas paginadas e filtros via JPA `Specification`.
+- **Transação por caso de uso.** Cada caso de uso de escrita roda inteiro numa transação, pela porta `TransactionRunner` (a aplicação continua sem Spring; a infraestrutura usa `TransactionTemplate`). Se algo falha no meio, nada do que o caso de uso gravou fica. Projetos têm `@Version`: duas edições simultâneas não se sobrescrevem, e a segunda a gravar recebe 409 `CONFLICT`.
 - **Contrato de erro estável.** `ProblemDetail` (RFC 9457) com `code` fixo no REST e `extensions.code` no GraphQL.
 - **Segurança por padrão.** Sessão HTTP com CSRF para SPA, senhas bcrypt, sem credencial padrão versionada, autorização de posse na camada de aplicação.
 - **Versões congeladas.** Java 25, Spring Boot 3.5.16, PostgreSQL 18.6, React 19.3, MUI 9.4, TanStack Query 5.102, TypeScript 5.9, Vite 8.3, Vitest 4.1, Biome 2.5, pnpm 12.5.1, Node 24.
@@ -74,10 +77,28 @@ As decisões de cada lote, com fonte e marcação de verificação, estão em `d
 
 ## Regras de negócio
 
-- **Status**: A iniciar (sem início e término realizados), Em andamento (início realizado, término previsto futuro, sem término realizado), Atrasado (início previsto vencido sem início realizado, ou término previsto vencido sem término realizado) e Concluído (término realizado preenchido). Editar datas recalcula o status.
-- **Transições**: seguem a tabela do desafio linha a linha (efeito automático, recálculo e bloqueio com mensagem quando o status final diverge do solicitado). Erros de transição respondem 400 `INVALID_REQUEST` com a orientação do desafio.
+- **Status**: A iniciar (sem início e término realizados), Em andamento (início realizado, término previsto maior ou igual a hoje, sem término realizado; ver [interpretações](#interpretações-do-enunciado)), Atrasado (início previsto vencido sem início realizado, ou término previsto vencido sem término realizado) e Concluído (término realizado preenchido). Editar datas recalcula o status.
+- **Status de hoje**: status, dias de atraso e % de tempo restante valem para a data de hoje, mesmo sem edição do projeto. Quando o dia muda, os projetos não concluídos são recalculados antes de qualquer leitura (projeto, quadro, filtros, indicadores e transição); `updatedAt` continua registrando só edições feitas pelo usuário.
+- **Transições**: seguem a tabela do desafio linha a linha (efeito automático, recálculo e bloqueio com mensagem quando o status final diverge do solicitado). Transição bloqueada responde 422 `TRANSITION_BLOCKED`, com a orientação do desafio em pt-BR e os campos `currentStatus`/`requestedStatus`. Transições que apagam uma data já registrada (Em andamento → A iniciar; Concluído → Em andamento ou Atrasado) exigem `confirm: true`; sem ele, a resposta é 422 `CONFIRMATION_REQUIRED`, com `clearedField` indicando a data que seria apagada.
 - **Métricas**: dias de atraso e % de tempo restante conforme as fórmulas do desafio, com os casos de zero previstos (sem datas, concluído, prazo vencido).
 - **Responsável**: e-mail único (sem diferenciar maiúsculas); não pode ser removido enquanto estiver em projeto (409). **Secretaria**: não pode ser removida enquanto tiver responsável (409).
+
+### Interpretações do enunciado
+
+Pontos que o documento do desafio não define, com a escolha feita e onde ela é testada:
+
+| Situação | Escolha | Teste |
+|---|---|---|
+| "Hoje" | data no fuso de negócio `America/Sao_Paulo` (`APP_TIME_ZONE`), não a data UTC | `ProjectScheduleRefresherTest.usesTheBusinessTimeZoneToDecideWhatTodayIs` |
+| Início realizado preenchido e término previsto **igual** a hoje | Em andamento: é o último dia do prazo, que ainda não venceu. O enunciado exige término previsto > hoje para Em andamento e < hoje para Atrasado; o dia exato fica sem regra | `ProjectScheduleCalculatorTest.keepsProjectInProgressOnItsPlannedEndDate` |
+| Mais de uma definição vale ao mesmo tempo | prioridade Concluído > Atrasado > Em andamento > A iniciar (por exemplo, início previsto vencido sem início realizado é Atrasado) | `ProjectScheduleCalculatorTest.classifiesProjectWithActualEndAsCompleted`, `classifiesMissedPlannedStartAsOverdue` |
+| Início realizado preenchido sem término previsto | recusado: sem término previsto não há como classificar Em andamento nem Atrasado | `ProjectScheduleCalculatorTest.rejectsStartedProjectWithoutPlannedEndWhenItCannotBeClassified` |
+| Início ou término realizado depois de hoje | recusado: data realizada registra fato já ocorrido | `ProjectDatesTest`, `ProjectServiceTest.rejectsActualDatesAfterTodayOnCreateAndUpdate` |
+| Status gravado em outro dia | a transição parte do status de hoje; o valor gravado é recalculado antes da leitura | `ProjectStatusTransitionTest.doesNotLetStaleInProgressBypassTheInProgressToOverdueBlock`, `ProjectScheduleRefresherTest`, `ScheduleFreshnessIT` |
+| Linha "A iniciar → Atrasado" | com o status de hoje, nunca resulta em sucesso: se o início previsto já passou, o projeto já está Atrasado; se não passou, a tabela manda bloquear | `ProjectStatusTransitionTest.blocksNotStartedToOverdueBeforePlannedStart`, `blocksNotStartedToOverdueOnPlannedStartBecauseDatesStillClassifyAsNotStarted`, `treatsStaleNotStartedAsOverdueOnceThePlannedStartHasPassed` |
+| "Confirmações obrigatórias" (Etapa 2) | a transição cuja ação automática apaga uma data registrada só é aplicada com `confirm: true` no corpo do `PATCH /api/v1/projects/{id}/status` ou no argumento da mutation `transitionProject`: Em andamento → A iniciar apaga o início realizado; Concluído → Em andamento ou Atrasado apaga o término realizado. A confirmação só é pedida quando a transição passaria; se a tabela bloqueia, o bloqueio vem primeiro. Na UI, o quadro abre um diálogo com a mensagem do servidor | `ProjectStatusTransitionTest.line04*`, `line11*`, `line12*`; `ProjectServiceTest.clearsRecordedActualStartOnlyWithExplicitConfirmation`; `KanbanBoard.test.tsx` |
+| Erro de regra de negócio × erro de entrada | entrada malformada ou fora do formato: 400 (`VALIDATION_ERROR`, `INVALID_REQUEST`); dado bem formado que viola regra do domínio: 422 (`BUSINESS_RULE_VIOLATION`, `TRANSITION_BLOCKED`, `CONFIRMATION_REQUIRED`) | `RestExceptionHandlerTest` |
+| % de tempo restante | arredondado para o inteiro mais próximo; 100% antes do início previsto | `ProjectScheduleCalculatorTest.capsRemainingPercentageAtOneHundredBeforePlannedStart` |
 
 ## Como rodar (Docker)
 
@@ -109,6 +130,15 @@ Serviços:
 - métricas Prometheus: `http://localhost:8080/actuator/prometheus` (HTTP Basic com a credencial técnica de métricas)
 - PostgreSQL: só na rede interna do Compose (`db:5432`)
 
+Usar a API pelo Swagger UI (a API exige sessão e token CSRF em toda escrita, inclusive no login):
+
+1. `GET /api/v1/auth/csrf` → **Try it out** → **Execute**. O navegador guarda o cookie `XSRF-TOKEN`, e o Swagger UI passa a enviá-lo no cabeçalho `X-XSRF-TOKEN` (`springdoc.swagger-ui.csrf.enabled`).
+2. `POST /api/v1/auth/login` com `{"email": "...", "password": "..."}` do administrador definido no `.env`.
+3. `GET /api/v1/auth/csrf` de novo: o login troca o token, e esta chamada entrega o novo.
+4. Qualquer operação. A sessão segue no cookie `JSESSIONID`.
+
+No GraphiQL, faça o passo 1 a 3 pelo Swagger UI (mesma origem) e informe no painel **Headers** `{"X-XSRF-TOKEN": "<valor do cookie XSRF-TOKEN>"}`.
+
 ### Observabilidade (opcional)
 
 Preencha `METRICS_PASSWORD` e `GRAFANA_ADMIN_PASSWORD` no `.env` (mínimo de 16 caracteres para `METRICS_PASSWORD`; gere com `python3 -c 'import secrets; print(secrets.token_urlsafe(32))'`) e suba com a sobreposição:
@@ -129,6 +159,19 @@ cd backend
 mvn -B -ntp clean verify
 ```
 
+Camadas de teste do backend:
+
+| Camada | Como | Exemplos |
+|---|---|---|
+| Domínio | JUnit puro | `ProjectScheduleCalculatorTest`, `ProjectStatusTransitionTest` (as 12 linhas da tabela, com mensagens exatas) |
+| Services | repositórios em memória; interações com Mockito | `ProjectServiceTest`, `ProjectServiceMockitoTest` (bloqueio não grava; o recálculo roda antes da leitura) |
+| Controllers REST | `@WebMvcTest` com o service simulado (`@MockitoBean`) | `ProjectRestControllerTest`, `ResponsibleRestControllerTest`, `SecretariatRestControllerTest`, `ProjectIndicatorsRestControllerTest` |
+| Controllers GraphQL | `@GraphQlTest` com o service simulado | `ProjectGraphQlControllerTest`, `ResponsibleGraphQlControllerTest`, `SecretariatGraphQlControllerTest` |
+| Repositório | `@DataJpaTest` com PostgreSQL real e as migrations | `ProjectPersistenceAdapterIT` |
+| Transações | Spring Boot com PostgreSQL real | `TransactionIT` (falha no meio desfaz tudo; edição concorrente não sobrescreve) |
+| API | servidor real, sessão e CSRF | `StatusTransitionApiIT` (12 linhas pela REST e 3 pela GraphQL), `ProjectIndicatorsIT`, `KanbanApiIT`, `SecurityApiIT`, `OpenApiContractIT` |
+| BDD | Cucumber + JUnit Platform, Gherkin em pt-BR | `features/transicoes.feature` cobre as 12 linhas da tabela |
+
 Frontend:
 
 ```bash
@@ -143,14 +186,32 @@ pnpm test          # Vitest + Testing Library
 pnpm build
 ```
 
-Coleção de API ([`docs/api/facilit-kanban.postman_collection.json`](docs/api/facilit-kanban.postman_collection.json), importável no Postman e no Insomnia): percorre autenticação com CSRF, cadastros, transição legítima e bloqueada, filtros, indicadores, GraphQL, erros 401/400/409 e limpeza. Com o backend no ar, informe `adminEmail` e `adminPassword` num ambiente e execute as pastas na ordem. Os mesmos 21 cenários rodam por `curl` no gate de entrega (`docs/evidence/F3-L4/VERIFICACAO-USUARIO.md`).
+Coleção de API ([`docs/api/facilit-kanban.postman_collection.json`](docs/api/facilit-kanban.postman_collection.json), importável no Postman e no Insomnia): percorre autenticação com CSRF, cadastros, transição legítima, bloqueada (422 `TRANSITION_BLOCKED`) e com confirmação obrigatória (422 `CONFIRMATION_REQUIRED` e depois `confirm: true`), filtros, indicadores, GraphQL, erros 401/400/409 e limpeza. Com o backend no ar, informe `adminEmail` e `adminPassword` num ambiente e execute as pastas na ordem. Os cenários de erro e de confirmação também rodam por `curl` no gate do F5-L2 (`docs/evidence/F5-L2/VERIFICACAO-USUARIO.md`).
 
 ## API: Swagger, GraphQL e erros
 
 - OpenAPI com exemplos e schemas em `/api-docs`; Swagger UI em `/swagger-ui.html`.
-- GraphQL (`backend/src/main/resources/graphql/*.graphqls`) espelha o REST: consultas de projetos com os mesmos filtros, indicadores, CRUD e transição.
-- Erros REST em `ProblemDetail` com `code` estável: `VALIDATION_ERROR` e `INVALID_REQUEST` (400), `UNAUTHORIZED` (401), `FORBIDDEN` (403), `RESOURCE_NOT_FOUND` (404), `CONFLICT` (409) e `INTERNAL_ERROR` (500, com `incidentId` e sem detalhe interno). No GraphQL, o mesmo código vai em `extensions.code`.
+- GraphQL (`backend/src/main/resources/graphql/*.graphqls`) sobre os mesmos casos de uso do REST: consultas de projetos com os mesmos filtros, indicadores, CRUD e transição. As páginas GraphQL trazem `page`, `size`, `totalPages`, `hasNext` e `hasPrevious`; o total de itens (`totalElements`) só existe no REST.
+- Indicadores adicionais: `GET /api/v1/indicators/projects/by-secretariat`, `/by-responsible` e `/deadlines?withinDays=7` (`withinDays` entre 1 e 90). O GraphQL expõe `projectIndicatorsBySecretariat`, `projectIndicatorsByResponsible` e `projectDeadlines`.
+- Erros REST em `ProblemDetail` (`application/problem+json`) com `code` estável e mensagem em pt-BR:
+
+  | HTTP | `code` | Quando |
+  |---|---|---|
+  | 400 | `VALIDATION_ERROR` | Bean Validation (campos em `violations`) |
+  | 400 | `INVALID_REQUEST` | parâmetro ou corpo malformado, paginação ou período inválido |
+  | 401 | `UNAUTHORIZED` | sem sessão ou login inválido |
+  | 403 | `FORBIDDEN` | sem permissão ou sem token CSRF |
+  | 404 | `RESOURCE_NOT_FOUND` | recurso inexistente |
+  | 409 | `CONFLICT` | e-mail já cadastrado, registro em uso, corrida com restrição do banco ou atualização concorrente |
+  | 422 | `BUSINESS_RULE_VIOLATION` | regra de domínio (ordem das datas, data realizada futura, término previsto obrigatório) |
+  | 422 | `TRANSITION_BLOCKED` | transição recusada pela tabela, com orientação e `currentStatus`/`requestedStatus` |
+  | 422 | `CONFIRMATION_REQUIRED` | transição que apaga data registrada sem `confirm: true`, com `clearedField` |
+  | 500 | `INTERNAL_ERROR` | erro inesperado, com `incidentId` e sem detalhe interno |
+
+  No GraphQL, o mesmo código vai em `extensions.code`. O Swagger documenta os erros de cada operação com exemplos (`ApiErrorDocumentation`, verificado por `OpenApiContractIT`).
+- Logs de negócio (`evento=projeto.criado|atualizado|transicao|transicao.recusada|excluido`, `responsavel.*`, `secretaria.*`, `credencial.*`, `projeto.status.recalculado`) em formato `chave=valor`, só com ids, status e perfil do ator, sem nome nem e-mail.
 - Paginação por `page`/`size` em todas as listagens.
+- Limites de entrada, iguais em REST e GraphQL (`InputLimits`, `ProjectFilter`): nome de projeto, responsável e secretaria e cargo até 200 caracteres; e-mail até 254; de 1 a 50 responsáveis por projeto → 400 `VALIDATION_ERROR` (no Swagger, `maxLength`/`maxItems`). Texto de busca até 100 caracteres → 400 `INVALID_REQUEST`, como os demais filtros. O banco guarda `TEXT`; o limite fica na borda da API.
 
 ## Segurança
 
@@ -171,7 +232,7 @@ Coleção de API ([`docs/api/facilit-kanban.postman_collection.json`](docs/api/f
 `.github/workflows/ci.yml` roda em `push`, `pull_request` e manualmente, com três jobs:
 
 - `frontend`: Node 24, pnpm 12.5.1, `pnpm install --frozen-lockfile`, lint, typecheck, `check:strict`, testes e build;
-- `backend`: JDK 25 (Temurin) com cache Maven, `mvn -B -ntp clean verify` (compilação com `-Xlint:all -Werror`, unitários e integração com Testcontainers);
+- `backend`: JDK 25 (Temurin) com cache Maven, `mvn -B -ntp clean verify` (compilação com `-Xlint:all -Werror`, unitários, BDD, integração com Testcontainers e JaCoCo com mínimo global de 95% de linhas);
 - `repository`: `git diff --check` sobre a árvore inteira, ausência de `localStorage`/`sessionStorage` no frontend e de `.env`/chaves versionados.
 
 Práticas de segurança do workflow: `permissions: contents: read`, actions fixadas por SHA completo, `persist-credentials: false`, sem `pull_request_target`, sem runner próprio e sem segredos.
@@ -185,7 +246,7 @@ backend/                     API Spring Boot (Maven)
     application/             casos de uso, portas e erros de aplicação (Actor, Conflict, NotFound, Forbidden)
     infrastructure/          JPA, segurança (sessão, CSRF, Actuator), configuração
     delivery/                REST, GraphQL e autenticação
-  src/main/resources/        application.yml, db/migration (Flyway V1–V5), graphql/*.graphqls
+  src/main/resources/        application.yml, db/migration (Flyway V1–V7), graphql/*.graphqls
   src/test/java/             unitários (domínio, serviços, controllers) e integração (*IT, Testcontainers)
 frontend/                    React 19 + MUI + TanStack Query (Vite)
   src/api/                   cliente HTTP e contratos, independente do React Query
@@ -194,7 +255,7 @@ frontend/                    React 19 + MUI + TanStack Query (Vite)
   scripts/                   verificação de tipagem estrita
 observability/               configuração do Prometheus e provisionamento do Grafana
 docs/api/                    coleção Postman/Insomnia
-docs/adr/                    decisões de arquitetura (camada de IA)
+docs/adr/                    decisões de arquitetura (0001 camada de IA; 0002 status sempre atual)
 docs/governance/             prompts executivos e replanejamento que governam a entrega
 docs/evidence/<LOTE>/        pacote de evidências e gate de cada lote
 .github/workflows/           CI
@@ -215,10 +276,16 @@ O uso de IA no desenvolvimento está descrito em [`AI_USAGE.md`](AI_USAGE.md). A
 - Observabilidade sem tracing distribuído e sem regras de alerta.
 - Bundle do frontend acima de 500 kB (aviso não bloqueante do Vite); divisão de código é o próximo passo.
 - Execução dos testes de integração depende de Docker disponível (Testcontainers).
+- O recálculo diário grava status e métricas com a data do cálculo; com várias instâncias, cada uma pode repetir a verificação no mesmo dia, sem efeito (é idempotente).
+- Concorrência: o `@Version` protege contra duas gravações simultâneas. A API não recebe a versão do cliente, então não detecta que alguém editou o projeto entre a leitura na tela e o envio; nesse caso, a última gravação vale.
+- GraphiQL sem envio automático do token CSRF: informe o cabeçalho `X-XSRF-TOKEN` no painel Headers (roteiro em "Como rodar").
+- Limites de tamanho só na borda da API: o banco guarda `TEXT` sem restrição de tamanho; um `CHECK` no banco seria o reforço seguinte.
 
 ## Governança e histórico de entrega
 
-Governança em `docs/governance`: `PROMPT-EXECUTIVO-BASE-v1.1.md`, `PROMPT-EXECUTIVO-KANBAN-v1.0.md` e `REPLANEJAMENTO-F3.md`. Cada lote gera o Pacote Anti-Alucinação (livro-razão, fontes, decisões, consumidores, matriz requisito → implementação → teste → evidência, riscos e gate) em `docs/evidence/<LOTE>/`.
+Governança em `docs/governance`: `PROMPT-EXECUTIVO-BASE-v1.1.md`, `PROMPT-EXECUTIVO-KANBAN-v1.0.md`, `REPLANEJAMENTO-F3.md`, `PLANO-CONFORMIDADE-F5.md` e `PLANO-CORRECAO-RELEASE-2.0.0.md`. Cada lote gera o Pacote Anti-Alucinação (livro-razão, fontes, decisões, consumidores, matriz requisito → implementação → teste → evidência, riscos e gate) em `docs/evidence/<LOTE>/`. A auditoria independente de aderência ao desafio que originou os lotes F5-C está em `docs/evidence/F5/ADERENCIA-FINAL.md`.
+
+Histórico Git: os lotes de F2-L1 a F3-L4 foram commitados depois dos gates, reconstruídos por lote a partir dos pacotes verificados (`docs/evidence/F3-L4/RECONSTRUCAO-HISTORICO.md`), com a data do dia da reconstrução. Do F4 em diante, cada lote tem commits granulares no momento da entrega, em Gitflow (`feature/*` ou `bugfix/*` → `merge --no-ff`).
 
 Estado dos lotes:
 
@@ -240,6 +307,14 @@ Estado dos lotes:
 - F3-L4 — Engenharia de entrega: GREEN em 2026-09-23 (gate local, histórico por lote, migração para o GitHub e primeiro pipeline verde).
 - F3 — Diferenciais: GREEN em 2026-09-23.
 - F4 — Freeze e release `v1.0.0`: evidências em `docs/evidence/F4/` (auditoria requisito → implementação → teste → evidência, revisão de segurança, saída do gate de freeze).
+- F5-L1 — Regras sempre corretas (status de hoje, fuso, datas realizadas): GREEN em 2026-09-24.
+- F5-L2 — Contrato de erro, confirmações, Swagger e logs: GREEN em 2026-09-24.
+- F5-L3 — Camadas de teste completas e transação por caso de uso: GREEN em 2026-09-24.
+- F5-L4 — Etapa 3, BDD e cobertura: GREEN em 2026-09-24.
+- F5-L5 — Release `v2.0.0`: roteiro, auditoria e gates em `docs/evidence/F5/`; a tag só é criada após o freeze GREEN.
+- F5-C1 — Entrega executável (build da imagem do backend e CSRF no Swagger UI), correção na `release/2.0.0` conforme `docs/governance/PLANO-CORRECAO-RELEASE-2.0.0.md`: GREEN em 2026-09-24.
+- F5-C2 — Rigor de testes e validação (métricas linha a linha no BDD e limites de tamanho nas entradas): GREEN em 2026-09-24.
+- F5-C3 — Documentação de entrega (coleção com os indicadores da Etapa 3, AI_USAGE com a F5, CHANGELOG e auditoria final): GREEN em 2026-09-24.
 
 ### Resumo por lote
 
@@ -297,3 +372,40 @@ O F3-L3 adiciona observabilidade ao backend sem alterar regras de negócio:
 - métricas com a tag `application="facilit-kanban"` e histograma de `http.server.requests` (latência p95), JVM e pool HikariCP;
 - logs estruturados em JSON no formato ECS (`@timestamp`, `log.level`, `message`, `ecs.version`) no Docker Compose; a execução local via Maven mantém o log legível;
 - `compose.observability.yaml` adiciona Prometheus v3.14.0 e Grafana 13.1.3, ligados só em `127.0.0.1`, com datasource e painel provisionados em `observability/`. A senha de métricas chega ao Prometheus como secret do Compose; nenhuma senha tem valor padrão.
+
+### F5-L1 — Regras sempre corretas
+
+O F5-L1 corrige o principal desvio da v1.0.0 em relação ao desafio: status, dias de atraso e % de tempo restante eram calculados só ao gravar e ficavam congelados com a passagem dos dias.
+
+- migration V6 com `schedule_calculated_on` (data do último cálculo), preenchida com a data UTC da última gravação nos projetos existentes;
+- `ProjectScheduleRefresher` recalcula, em lotes de 500, os projetos não concluídos calculados antes de hoje; roda antes de toda leitura e na subida, e por agendamento à meia-noite (`APP_SCHEDULE_REFRESH_CRON`);
+- a transição parte do status de hoje, e não do gravado (um projeto gravado como Em andamento e já vencido não passa mais por Em andamento → Atrasado);
+- "hoje" passa a ser a data no fuso `America/Sao_Paulo` (`APP_TIME_ZONE`);
+- datas realizadas posteriores a hoje são recusadas;
+- decisões registradas no [ADR 0002](docs/adr/0002-status-sempre-atual.md) e em `docs/evidence/F5-L1/`.
+
+### F5-L2 — Contrato de erro, confirmações, Swagger e logs
+
+- regras de negócio passam a responder 422 com código próprio (`BUSINESS_RULE_VIOLATION`, `TRANSITION_BLOCKED`, `CONFIRMATION_REQUIRED`); corrida com restrição do banco e atualização concorrente passam a 409 `CONFLICT` em vez de 500;
+- mensagens da API em pt-BR, com orientação específica em cada linha bloqueável da tabela de transição; Bean Validation em pt-BR (`spring.web.locale=pt_BR`);
+- confirmação obrigatória (`confirm: true`) nas transições que apagam data registrada, em REST, GraphQL e na UI (diálogo com a mensagem do servidor);
+- erros documentados em todas as operações do Swagger, com exemplos (`ApiErrorDocumentation`);
+- logs de negócio sem dados pessoais;
+- coleção Postman atualizada (422 e confirmação).
+
+### F5-L3 — Camadas de teste completas e transação por caso de uso
+
+- porta `TransactionRunner` na aplicação e `SpringTransactionRunner` na infraestrutura; criar, editar, transicionar e excluir rodam inteiros numa transação, e os logs de negócio saem depois do commit;
+- migration V7 com a coluna `version` em `projects` e `@Version` na entidade; atualização concorrente responde 409 `CONFLICT` (REST e GraphQL);
+- testes de controller com o service simulado: 4 classes `@WebMvcTest` e 3 `@GraphQlTest`;
+- `ProjectServiceMockitoTest` verifica interações (bloqueio não grava, recálculo antes da leitura, ordem das chamadas);
+- testes de integração novos: `ProjectPersistenceAdapterIT` (`@DataJpaTest`), `TransactionIT` e `StatusTransitionApiIT` (a tabela inteira pela API);
+- agente do Mockito configurado explicitamente no Surefire e no Failsafe, como pede a documentação do Mockito para Java 21 ou mais novo.
+
+
+### F5-L4 — Etapa 3, BDD e cobertura
+
+- indicadores adicionais por secretaria, responsável e janela de prazo em REST e GraphQL;
+- `ProjectIndicatorsIT` cobre os contratos e validações da Etapa 3;
+- Cucumber/JUnit Platform formaliza as 12 linhas da tabela de transição em Gherkin pt-BR;
+- JaCoCo integrado ao `mvn clean verify`, sem exclusões artificiais, com mínimo global de 95% de linhas; a medição de fechamento atingiu 95,61%.

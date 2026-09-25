@@ -81,13 +81,18 @@ export type ProjectIndicators = {
 
 export class KanbanApiError extends Error {
   readonly status: number;
+  readonly code: string | null;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code: string | null = null) {
     super(message);
     this.name = "KanbanApiError";
     this.status = status;
+    this.code = code;
   }
 }
+
+/** Código da API para transição válida que apaga uma data registrada e exige confirmação. */
+export const CONFIRMATION_REQUIRED = "CONFIRMATION_REQUIRED";
 
 type PagePayload<T> = {
   content: T[];
@@ -262,7 +267,8 @@ async function errorFrom(response: Response): Promise<KanbanApiError> {
   try {
     const body: unknown = await response.json();
     if (isRecord(body) && typeof body.detail === "string") {
-      return new KanbanApiError(body.detail, response.status);
+      const code = typeof body.code === "string" ? body.code : null;
+      return new KanbanApiError(body.detail, response.status, code);
     }
   } catch {
     return new KanbanApiError(fallback, response.status);
@@ -396,11 +402,12 @@ export async function updateProject(
 export async function transitionProject(
   projectId: string,
   status: ProjectStatus,
+  confirm = false,
 ): Promise<Project> {
   const response = await mutateJson(
     `/api/v1/projects/${projectId}/status`,
     "PATCH",
-    { status },
+    confirm ? { status, confirm: true } : { status },
   );
   return parseProject(await response.json());
 }

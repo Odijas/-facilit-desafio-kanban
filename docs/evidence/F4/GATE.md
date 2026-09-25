@@ -2,13 +2,13 @@
 
 Data: 2026-09-23
 
-Estado: **CANDIDATE rev2**. O rev1 ficou RED por falso positivo do próprio gate (checagem de porta do banco); a correção está só no gate.
+Estado: **GREEN**. `[EXECUTADO PELO USUÁRIO · 2026-09-23]` O rev1 ficou RED por falso positivo do próprio gate (checagem de porta do banco); a rev2 foi executada integralmente e terminou com `=== F4 GREEN ===` e exit code 0. A verificação final da release também terminou com `=== F4 RELEASE GREEN ===` e exit code 0.
 
 Escopo: freeze (`PROMPT-EXECUTIVO-KANBAN-v1.0.md`, F4). Não há feature nova. O único ajuste de código é a versão `1.0.0` (pom, Dockerfile, package.json), que faz parte da release.
 
 Critérios do gate de freeze (`VERIFICACAO-USUARIO.md`, na `release/1.0.0` publicada):
 
-- `F4_PRECONDITIONS_GREEN`: branch `release/1.0.0` limpa e igual nos dois remotos; versão `1.0.0` consistente;
+- `F4_PRECONDITIONS_GREEN`: branch `release/1.0.0` validada; versão `1.0.0` consistente;
 - `F4_FRONTEND_GREEN`:
   - format sem alterar arquivos, lint, typecheck, `check:strict`, testes e build;
   - nenhum aviso de depreciação;
@@ -42,5 +42,10 @@ Critérios do gate de freeze (`VERIFICACAO-USUARIO.md`, na `release/1.0.0` publi
 
 Critérios da verificação da release (`VERIFICACAO-RELEASE.md`, após o merge):
 
-- `F4_RELEASE_REFS_GREEN`, `F4_RELEASE_REMOTES_GREEN`, `F4_RELEASE_CI_GREEN`, `F4_RELEASE_PAGE_GREEN`;
+- `F4_RELEASE_REFS_GREEN`: `main`, `release/1.0.0`, `develop` e tag anotada `v1.0.0` validados no GitHub;
+- `F4_RELEASE_CI_GREEN`: CI da `main` com `frontend`, `backend` e `repository` em `success`;
+- `F4_RELEASE_PAGE_GREEN`: repositório GitHub público, `main` como branch padrão e README da tag acessível;
 - marcador `=== F4 RELEASE GREEN ===` e exit code 0.
+
+
+Evidência executada: [`SAIDA-GATE.txt`](SAIDA-GATE.txt) e [`SAIDA-RELEASE.txt`](SAIDA-RELEASE.txt).

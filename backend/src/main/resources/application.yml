@@ -13,6 +13,10 @@ spring:
     enabled: true
     locations: classpath:db/migration
     validate-migration-naming: true
+  web:
+    # Mensagens da API (inclusive as de Bean Validation) em pt-BR, independentemente do Accept-Language.
+    locale: pt_BR
+    locale-resolver: fixed
   graphql:
     graphiql:
       enabled: ${GRAPHQL_GRAPHIQL_ENABLED:false}
@@ -31,10 +35,15 @@ server:
     include-stacktrace: never
 
 springdoc:
+  # As respostas de erro são documentadas por ApiErrorDocumentation, operação a operação.
+  override-with-generic-response: false
   api-docs:
     path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
+    # O Swagger UI lê o cookie XSRF-TOKEN e envia o cabeçalho X-XSRF-TOKEN, exigido pelo CSRF da API.
+    csrf:
+      enabled: true
 
 management:
   endpoints:
@@ -57,6 +66,11 @@ management:
         "[http.server.requests]": true
 
 app:
+  # Fuso de negócio: define o "hoje" das regras de status, atraso e % de tempo restante.
+  time-zone: ${APP_TIME_ZONE:America/Sao_Paulo}
+  schedule-refresh:
+    # Recálculo diário (segundo minuto hora dia mês dia-da-semana), no fuso acima.
+    cron: "${APP_SCHEDULE_REFRESH_CRON:0 0 0 * * *}"
   metrics:
     username: ${APP_METRICS_USERNAME:prometheus}
     password: ${APP_METRICS_PASSWORD:}

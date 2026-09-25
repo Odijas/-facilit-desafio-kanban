@@ -112,16 +112,16 @@ describe("kanban API", () => {
     expect(indicators.byStatus[1]?.averageDelayDays).toBe(4.5);
   });
 
-  it("uses CSRF and preserves a backend transition error detail", async () => {
+  it("uses CSRF and preserves a backend transition error detail and code", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse(
         {
-          title: "INVALID_REQUEST",
-          status: 400,
+          title: "TRANSITION_BLOCKED",
+          status: 422,
           detail: "Ajuste as datas previstas antes da transição",
-          code: "INVALID_REQUEST",
+          code: "TRANSITION_BLOCKED",
         },
-        400,
+        422,
       ),
     );
 
@@ -129,7 +129,8 @@ describe("kanban API", () => {
       transitionProject(projectPayload.id, "IN_PROGRESS"),
     ).rejects.toMatchObject({
       message: "Ajuste as datas previstas antes da transição",
-      status: 400,
+      status: 422,
+      code: "TRANSITION_BLOCKED",
     });
 
     expect(mockedGetCsrfHeaders).toHaveBeenCalledOnce();
@@ -143,5 +144,21 @@ describe("kanban API", () => {
         }),
       }),
     );
+  });
+
+  it("sends confirm only when the transition is explicitly confirmed", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(projectPayload))
+      .mockResolvedValueOnce(jsonResponse(projectPayload));
+
+    await transitionProject(projectPayload.id, "NOT_STARTED");
+    await transitionProject(projectPayload.id, "NOT_STARTED", true);
+
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      body: JSON.stringify({ status: "NOT_STARTED" }),
+    });
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      body: JSON.stringify({ status: "NOT_STARTED", confirm: true }),
+    });
   });
 });

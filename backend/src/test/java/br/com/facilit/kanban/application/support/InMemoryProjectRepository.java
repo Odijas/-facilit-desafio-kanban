@@ -2,12 +2,17 @@ package br.com.facilit.kanban.application.support;
 
 import br.com.facilit.kanban.application.common.PageQuery;
 import br.com.facilit.kanban.application.common.PageResult;
+import br.com.facilit.kanban.application.project.ProjectDeadlineIndicator;
 import br.com.facilit.kanban.application.project.ProjectFilter;
+import br.com.facilit.kanban.application.project.ProjectGroupIndicator;
 import br.com.facilit.kanban.application.project.ProjectIndicators;
 import br.com.facilit.kanban.application.project.ProjectRepository;
+import br.com.facilit.kanban.application.project.ProjectScheduleSnapshot;
+import br.com.facilit.kanban.application.project.ProjectScheduleUpdate;
 import br.com.facilit.kanban.application.project.ProjectStatusIndicator;
 import br.com.facilit.kanban.domain.project.Project;
 import br.com.facilit.kanban.domain.project.ProjectStatus;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -16,12 +21,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.UUID;
 
 public final class InMemoryProjectRepository implements ProjectRepository {
 
     private final Map<UUID, Project> values = new LinkedHashMap<>();
     private final Map<UUID, UUID> responsibleSecretariats = new LinkedHashMap<>();
+    private final Map<UUID, LocalDate> scheduleCalculatedOn = new LinkedHashMap<>();
 
     public void assignResponsibleToSecretariat(UUID responsibleId, UUID secretariatId) {
         responsibleSecretariats.put(responsibleId, secretariatId);
@@ -122,14 +129,109 @@ public final class InMemoryProjectRepository implements ProjectRepository {
     }
 
     @Override
-    public Project save(Project project) {
+    public List<ProjectGroupIndicator> indicatorsBySecretariat() {
+        Map<UUID, Map<UUID, Project>> grouped = new TreeMap<>();
+        for (Project project : values.values()) {
+            for (UUID responsibleId : project.responsibleIds()) {
+                UUID secretariatId = responsibleSecretariats.get(responsibleId);
+                if (secretariatId != null) {
+                    grouped.computeIfAbsent(secretariatId, ignored -> new LinkedHashMap<>())
+                            .put(project.id(), project);
+                }
+            }
+        }
+        return grouped.entrySet().stream()
+                .map(entry -> groupIndicator(entry.getKey(), entry.getValue().values()))
+                .toList();
+    }
+
+    @Override
+    public List<ProjectGroupIndicator> indicatorsByResponsible() {
+        Map<UUID, Map<UUID, Project>> grouped = new TreeMap<>();
+        for (Project project : values.values()) {
+            for (UUID responsibleId : project.responsibleIds()) {
+                grouped.computeIfAbsent(responsibleId, ignored -> new LinkedHashMap<>())
+                        .put(project.id(), project);
+            }
+        }
+        return grouped.entrySet().stream()
+                .map(entry -> groupIndicator(entry.getKey(), entry.getValue().values()))
+                .toList();
+    }
+
+    @Override
+    public List<ProjectDeadlineIndicator> deadlines(LocalDate from, LocalDate to) {
+        return values.values().stream()
+                .filter(project -> project.status() != ProjectStatus.COMPLETED)
+                .filter(project -> project.dates().plannedEnd() != null)
+                .filter(project -> !project.dates().plannedEnd().isBefore(from))
+                .filter(project -> !project.dates().plannedEnd().isAfter(to))
+                .sorted(Comparator.comparing((Project project) -> project.dates().plannedEnd())
+                        .thenComparing(Project::name)
+                        .thenComparing(Project::id))
+                .map(project -> new ProjectDeadlineIndicator(
+                        project.id(),
+                        project.name(),
+                        project.status(),
+                        project.dates().plannedEnd(),
+                        java.time.temporal.ChronoUnit.DAYS.between(from, project.dates().plannedEnd())))
+                .toList();
+    }
+
+    private static ProjectGroupIndicator groupIndicator(UUID id, java.util.Collection<Project> projects) {
+        return new ProjectGroupIndicator(
+                id,
+                projects.size(),
+                projects.stream().mapToLong(Project::delayDays).average().orElse(0));
+    }
+
+    @Override
+    public Project save(Project project, LocalDate calculatedOn) {
         values.put(project.id(), project);
+        scheduleCalculatedOn.put(project.id(), calculatedOn);
         return project;
+    }
+
+    public LocalDate scheduleCalculatedOn(UUID id) {
+        return scheduleCalculatedOn.get(id);
+    }
+
+    @Override
+    public List<ProjectScheduleSnapshot> findStaleSchedules(LocalDate today, int limit) {
+        return values.values().stream()
+                .filter(project -> project.status() != ProjectStatus.COMPLETED)
+                .filter(project -> scheduleCalculatedOn.get(project.id()).isBefore(today))
+                .sorted(Comparator.comparing(Project::id))
+                .limit(limit)
+                .map(project -> new ProjectScheduleSnapshot(project.id(), project.dates()))
+                .toList();
+    }
+
+    @Override
+    public int updateSchedules(List<ProjectScheduleUpdate> updates, LocalDate calculatedOn) {
+        int updated = 0;
+        for (ProjectScheduleUpdate update : updates) {
+            Project current = values.get(update.id());
+            if (current == null || !scheduleCalculatedOn.get(update.id()).isBefore(calculatedOn)) {
+                continue;
+            }
+            values.put(update.id(), new Project(
+                    current.id(),
+                    current.name(),
+                    current.responsibleIds(),
+                    current.dates(),
+                    update.schedule(),
+                    current.audit()));
+            scheduleCalculatedOn.put(update.id(), calculatedOn);
+            updated++;
+        }
+        return updated;
     }
 
     @Override
     public void deleteById(UUID id) {
         values.remove(id);
+        scheduleCalculatedOn.remove(id);
     }
 
     @Override

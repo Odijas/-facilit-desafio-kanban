@@ -1,0 +1,21 @@
+=== PRÉ-CONDIÇÕES ===
+   35 arquivos do lote; frontend intocado
+F5_L4_PRECONDITIONS_GREEN
+=== BACKEND: CLEAN VERIFY + BDD + JACOCO CHECK ===
+   unitários/BDD: 24 relatórios, 165 testes, zero falhas/erros/ignorados
+   integração: 12 relatórios, 48 testes, zero falhas/erros/ignorados
+   ProjectIndicatorsIT: GREEN
+F5_L4_BACKEND_GREEN
+=== BDD: 12 LINHAS ===
+   12 cenários / 36 passos passed
+F5_L4_BDD_GREEN
+=== JACOCO: LIMITE 95% ===
+   covered=1677 missed=77 total=1754
+JACOCO_LINE_COVERAGE=95.61%
+JACOCO_LINE_COVERAGE_RATIO=0.9561
+F5_L4_JACOCO_GREEN
+=== ESTÁTICA ===
+   BDD=12; JaCoCo check=95%; sem migration nova
+F5_L4_STATIC_GREEN
+=== F5-L4 GREEN ===
+Resultado: exit code 0

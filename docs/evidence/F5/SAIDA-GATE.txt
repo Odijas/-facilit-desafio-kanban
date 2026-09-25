@@ -1,0 +1,89 @@
+=== PRÉ-CONDIÇÕES DA RELEASE ===
+   HEAD 9eca2749cd848fd6414fe82b1cb0e81b588b361b · GitHub Odijas/facilit-desafio-kanban
+   versão 2.0.0 em pom.xml, Dockerfile e package.json
+F5_PRECONDITIONS_GREEN
+=== FRONTEND: FORMAT + LINT + TYPECHECK + STRICT + TEST + BUILD ===
+   STRICT_TYPES_GREEN 32
+   Test Files  6 passed (6)
+   Tests  33 passed (33)
+   pnpm audit --prod (informativo): No known vulnerabilities found
+F5_FRONTEND_GREEN
+=== BACKEND: CLEAN VERIFY ===
+   linhas com 'deprecat' no log do Maven (ferramentas, informativo): 1
+         1 WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+   unitários: 25 classes, 174 testes, 0 falhas, 0 erros, 0 ignorados
+   integração: 12 classes, 49 testes, 0 falhas, 0 erros, 0 ignorados
+   JaCoCo linhas: 1685/1756 = 95.96%
+   BDD: 12 cenários sem falhas/erros
+F5_JACOCO_BDD_GREEN
+F5_BACKEND_GREEN
+=== ANÁLISE ESTÁTICA: WORKFLOW, REPOSITÓRIO, HISTÓRICO E COMMITS ===
+WORKFLOW_POLICY_OK actions=5 jobs=['backend', 'frontend', 'repository']
+   workflow OK
+WORKTREE_OK files=438
+HISTORY_SECRETS_OK
+   repositório e histórico OK
+   Conventional Commits: 74 commits (sem merges); 1 revert auditado legado aceito
+   README, AI_USAGE, ADR, auditoria, revisão de segurança, diagramas, links e coleção OK
+F5_STATIC_GREEN
+=== DOCKER: BANCO LIMPO + MIGRATIONS DO ZERO + OBSERVABILIDADE ===
+   banco novo (facilit-kanban-f5); migrations V1 2 3 4 5 6 7 aplicadas do zero
+F5_DOCKER_CLEAN_DB_GREEN
+=== UI + SWAGGER ===
+   OpenAPI com 16 caminhos
+F5_UI_SWAGGER_GREEN
+=== REST + GRAPHQL: SMOKE ADMIN + INDICADORES F5 ===
+  ok 1 health REST
+  ok 2 projetos sem sessão
+  ok 3 CSRF antes do login
+  ok 4 login ADMIN
+  ok 5 CSRF renovado após login
+  ok 6 sessão atual
+  ok 7 criar secretaria
+  ok 8 criar responsável
+  ok 9 e-mail duplicado
+  ok 10 criar projeto
+  ok 11 projeto sem responsável
+  ok 12 transição A iniciar → Em andamento
+  ok 13 transição bloqueada Em andamento → Atrasado
+  ok 14 listar com filtros
+  ok 15 indicadores
+  ok 16 indicadores por secretaria
+  ok 17 indicadores por responsável
+  ok 18 prazos em 7 dias
+  ok 19 withinDays inválido
+  ok 20 GraphQL projeto e indicadores
+  ok 21 excluir projeto
+  ok 22 excluir responsável
+  ok 23 excluir secretaria
+  ok 24 logout
+  ok 25 sessão encerrada
+F5_API_GREEN
+=== AUTENTICAÇÃO DO RESPONSÁVEL: LEGÍTIMO E ATAQUE ===
+  ok 26 login ADMIN com cabeçalhos
+  ok 27 ADMIN cria outro responsável
+  ok 28 ADMIN cria projeto alheio
+  ok 29 login do responsável de demonstração
+  ok 30 responsável cria o próprio projeto
+  ok 31 responsável transiciona o próprio projeto
+  ok 32 responsável altera projeto alheio
+  ok 33 responsável cria secretaria
+  ok 34 responsável define credencial
+  ok 35 GraphQL do responsável bloqueado
+  ok 36 responsável exclui o próprio projeto
+  ok 37 ADMIN exclui projeto alheio
+  ok 38 ADMIN exclui outro responsável
+F5_RESPONSIBLE_AUTH_GREEN
+=== REVISÃO DE SEGURANÇA EXECUTÁVEL ===
+   banco sem porta no host (portas do contêiner: ['5432/tcp'])
+F5_SECURITY_GREEN
+=== PROMETHEUS + GRAFANA + LOGS ECS ===
+   65 registros ECS no backend
+F5_OBSERVABILITY_GREEN
+=== CI DO COMMIT DA RELEASE ===
+   [1] in_progress:None 36082256488 https://github.com/Odijas/facilit-desafio-kanban/actions/runs/36082256488
+   [2] completed:success 36082256488 https://github.com/Odijas/facilit-desafio-kanban/actions/runs/36082256488
+   {'repository': 'success', 'backend': 'success', 'frontend': 'success'}
+F5_CI_GREEN
+=== F5-L5 GREEN ===
+Resultado: exit code 0

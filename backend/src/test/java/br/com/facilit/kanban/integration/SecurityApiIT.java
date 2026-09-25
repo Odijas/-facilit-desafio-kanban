@@ -3,8 +3,8 @@ package br.com.facilit.kanban.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -48,6 +48,10 @@ class SecurityApiIT {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    // Mesmo relógio da aplicação: "hoje" no fuso de negócio, não em UTC.
+    @Autowired
+    private Clock clock;
 
     @Test
     void protectsBusinessEndpointsAndStoresOnlyEncodedPassword() {
@@ -129,7 +133,7 @@ class SecurityApiIT {
         assertThat(badLogin.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(badLogin.getBody()).isNotNull();
         assertThat(badLogin.getBody().path("code").asText()).isEqualTo("UNAUTHORIZED");
-        assertThat(badLogin.getBody().path("detail").asText()).isEqualTo("Invalid email or password");
+        assertThat(badLogin.getBody().path("detail").asText()).isEqualTo("E-mail ou senha inválidos.");
 
         AuthenticatedSession session = login("security-admin@example.invalid", "security-test-password", "ROLE_ADMIN");
         ResponseEntity<JsonNode> refreshedCsrf = csrf(session.sessionCookie());
@@ -181,7 +185,7 @@ class SecurityApiIT {
                 ownerId);
         assertThat(storedPassword).startsWith("{bcrypt}").doesNotContain("responsible-test-password");
 
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate today = LocalDate.now(clock);
         String otherProjectId = requireBody(send(admin, HttpMethod.POST, "/api/v1/projects", Map.of(
                 "name", "Projeto de outro responsável",
                 "responsibleIds", List.of(otherId),
