@@ -2,6 +2,20 @@
 
 Todas as mudanças relevantes deste projeto são registradas aqui.
 
+## [2.0.1] — 2026-09-25
+
+### Fixed
+
+- Swagger/OpenAPI com exemplos em todos os parâmetros, corpos e respostas de sucesso das 26 operações REST (antes, só nos cadastros de projeto e de responsável). O `GET /api/v1/auth/csrf` deixa de publicar o token interno do Spring como parâmetro.
+- Busca de projetos por texto (REST e GraphQL) trata `%`, `_` e `\` como caracteres comuns; antes, `%` e `_` funcionavam como curingas.
+
+### Documentation
+
+- README: estado das releases, paginação, busca por texto, duas interpretações novas (edição de datas por `PUT` e término previsto vazio na transição) e as auditorias de aderência.
+- AI_USAGE: patch release 2.0.1 e os erros da IA pegos nela; a referência ao GitHub Actions passa a dizer que ele é diferencial.
+- Evidências do F5-L5 atualizadas para o estado final (freeze e release GREEN) e auditoria da `v2.0.0` versionada em `docs/evidence/F5/ADERENCIA-V2.0.0.md`.
+- Entrada da 1.0.0: "CI/CD" corrigido para "CI"; o projeto não tem deploy automatizado.
+
 ## [2.0.0] — 2026-09-24
 
 ### Breaking changes
@@ -36,4 +50,4 @@ Todas as mudanças relevantes deste projeto são registradas aqui.
 
 ## [1.0.0] — 2026-09-23
 
-Primeira release pública do desafio técnico: CRUD, Kanban, REST, GraphQL, UI, autenticação, segurança, indicadores básicos, filtros, Secretaria, observabilidade, CI/CD, documentação e proposta de arquitetura de IA/RAG.
+Primeira release pública do desafio técnico: CRUD, Kanban, REST, GraphQL, UI, autenticação, segurança, indicadores básicos, filtros, Secretaria, observabilidade, CI, documentação e proposta de arquitetura de IA/RAG.
