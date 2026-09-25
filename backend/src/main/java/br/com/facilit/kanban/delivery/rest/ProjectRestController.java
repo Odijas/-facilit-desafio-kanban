@@ -5,10 +5,12 @@ import br.com.facilit.kanban.application.common.PageResult;
 import br.com.facilit.kanban.application.project.ProjectFilter;
 import br.com.facilit.kanban.application.project.ProjectService;
 import br.com.facilit.kanban.application.project.SaveProjectCommand;
+import br.com.facilit.kanban.delivery.common.ApiExamples;
 import br.com.facilit.kanban.domain.project.Project;
 import br.com.facilit.kanban.domain.project.ProjectStatus;
 import br.com.facilit.kanban.infrastructure.security.AuthenticatedActorResolver;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -79,7 +81,9 @@ public class ProjectRestController {
                                   "actualStart": null,
                                   "actualEnd": null,
                                   "delayDays": 0,
-                                  "remainingTimePercentage": 100
+                                  "remainingTimePercentage": 100,
+                                  "createdAt": "2026-09-22T12:00:00Z",
+                                  "updatedAt": "2026-09-22T12:00:00Z"
                                 }
                                 """))),
         @ApiResponse(
@@ -106,22 +110,32 @@ public class ProjectRestController {
     }
 
     @GetMapping("/{id}")
-    public ProjectResponse get(@PathVariable UUID id) {
+    public ProjectResponse get(@Parameter(description = "Id do projeto", example = ApiExamples.PROJECT_ID) @PathVariable UUID id) {
         return ProjectResponse.from(service.get(id));
     }
 
     @GetMapping
     @Operation(summary = "Lista projetos com paginação e filtros avançados")
     public PageResponse<ProjectResponse> list(
+            @Parameter(description = "Página, a partir de 0", example = "0")
             @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Itens por página", example = "20")
             @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Status calculado para hoje", example = "IN_PROGRESS")
             @RequestParam(required = false) ProjectStatus status,
+            @Parameter(description = "Secretaria de algum responsável do projeto", example = ApiExamples.SECRETARIAT_ID)
             @RequestParam(required = false) UUID secretariatId,
+            @Parameter(description = "Responsável do projeto", example = ApiExamples.RESPONSIBLE_ID)
             @RequestParam(required = false) UUID responsibleId,
+            @Parameter(description = "Projetos com término previsto a partir desta data", example = "2026-09-01")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate plannedFrom,
+            @Parameter(description = "Projetos com início previsto até esta data", example = "2026-12-31")
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate plannedTo,
+            @Parameter(
+                    description = "Trecho do nome, sem diferenciar maiúsculas; % e _ são literais (até 100 caracteres)",
+                    example = "portal")
             @RequestParam(required = false) String text) {
         PageQuery pageQuery = new PageQuery(page, size);
         ProjectFilter filter = new ProjectFilter(
@@ -144,7 +158,7 @@ public class ProjectRestController {
 
     @PutMapping("/{id}")
     public ProjectResponse update(
-            @PathVariable UUID id,
+            @Parameter(description = "Id do projeto", example = ApiExamples.PROJECT_ID) @PathVariable UUID id,
             @Valid @RequestBody ProjectRequest request,
             Principal principal) {
         return ProjectResponse.from(service.update(id, toCommand(request), actorResolver.resolve(principal)));
@@ -153,7 +167,7 @@ public class ProjectRestController {
     @PatchMapping("/{id}/status")
     @Operation(summary = "Executa uma transição Kanban")
     public ProjectResponse transition(
-            @PathVariable UUID id,
+            @Parameter(description = "Id do projeto", example = ApiExamples.PROJECT_ID) @PathVariable UUID id,
             @Valid @RequestBody ProjectStatusRequest request,
             Principal principal) {
         return ProjectResponse.from(service.transition(
@@ -164,7 +178,7 @@ public class ProjectRestController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id, Principal principal) {
+    public ResponseEntity<Void> delete(@Parameter(description = "Id do projeto", example = ApiExamples.PROJECT_ID) @PathVariable UUID id, Principal principal) {
         service.delete(id, actorResolver.resolve(principal));
         return ResponseEntity.noContent().build();
     }

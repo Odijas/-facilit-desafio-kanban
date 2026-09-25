@@ -16,7 +16,7 @@ A proposta de camada de IA para o produto (Etapa 5) está no ADR [`docs/adr/0001
 | Ferramenta | Uso |
 |---|---|
 | ChatGPT (OpenAI) | uso em fases anteriores (F0–F2), sob os mesmos prompts de governança |
-| Claude (Anthropic), em conversas e sessões de agente no claude.ai | implementação de backend e frontend, testes, scripts de gate, documentação e pesquisa em fontes oficiais; conduziu toda a F3; na F5, as duas auditorias de aderência (cada uma com um segundo agente independente), os planos de conformidade e de correção da release e os lotes F5-L1 a F5-L3 e F5-C1 a F5-C3 |
+| Claude (Anthropic), em conversas e sessões de agente no claude.ai | implementação de backend e frontend, testes, scripts de gate, documentação e pesquisa em fontes oficiais; conduziu toda a F3; na F5, as duas auditorias de aderência (cada uma com um segundo agente independente), os planos de conformidade e de correção da release e os lotes F5-L1 a F5-L3 e F5-C1 a F5-C3; depois da `v2.0.0`, a terceira auditoria (sobre a tag), o plano da patch release 2.0.1 e os lotes F5-P |
 | Ambiente de execução da IA (contêiner Linux) | verificações possíveis sem as dependências completas: `javac` sobre domínio e aplicação, suíte do frontend, validação de schema GraphQL, `promtool`, `actionlint`, `newman` contra servidor simulado |
 | Máquina do desenvolvedor (Linux Mint) | execução real e decisiva: `mvn clean verify` com JDK 25 e Testcontainers, Docker Compose, suíte do frontend em Node 24 e os gates de cada lote |
 
@@ -40,9 +40,10 @@ O desenvolvimento seguiu uma forma de *spec-driven development*, com três docum
    - prioridade de corte;
    - "Pacote Anti-Alucinação" obrigatório por lote.
 3. **`REPLANEJAMENTO-F3.md`.** Emenda ao plano, com as decisões do desenvolvedor registradas antes da implementação.
-4. **`PLANO-CONFORMIDADE-F5.md` e `PLANO-CORRECAO-RELEASE-2.0.0.md`.** Specs derivadas de auditorias de aderência ao PDF do desafio:
+4. **`PLANO-CONFORMIDADE-F5.md`, `PLANO-CORRECAO-RELEASE-2.0.0.md` e `PLANO-CORRECAO-RELEASE-2.0.1.md`.** Specs derivadas de auditorias de aderência ao PDF do desafio:
    - cada lacuna vira um lote com critério de aceite objetivo;
    - as decisões que mudam contrato ou escopo (versão 2.0.0, limites de tamanho, testes unitários no build da imagem) foram tomadas pelo desenvolvedor antes da implementação;
+   - na 2.0.1, o desenvolvedor fixou a meta (fechar o único obrigatório corrigível, Swagger com exemplos) e manteve o histórico de commits reconstruído como está e declarado, em vez de reescrever o histórico publicado;
    - cada auditoria teve um segundo agente, sem acesso à análise principal, lendo só o PDF e o código; as divergências entre os dois foram resolvidas pela evidência no código.
 
 Ciclo de cada lote:
@@ -79,7 +80,7 @@ Nenhum lote começou com o anterior em RED. A promoção documental de um lote G
 
 1. **Pipeline duplicado (GitLab CI + GitHub Actions).**
    - **Proposta da IA:** manter CI no GitLab, onde o repositório estava, e acrescentar GitHub Actions.
-   - **Rejeitada:** o desafio pede GitHub Actions e repositório no GitHub, e dois pipelines iguais dobram a manutenção sem ganho.
+   - **Rejeitada:** o desafio pede repositório público no GitHub e cita GitHub Actions no diferencial de CI/CD; dois pipelines iguais dobram a manutenção sem ganho.
    - **Decisão:** migrar o repositório para o GitHub com o histórico (`git clone --bare` + `git push --mirror`) e manter só GitHub Actions, antes do freeze.
 2. **Pacote separado só para promover documentação.**
    - **Proposta da IA:** depois do gate GREEN do F3-L1, gerar um pacote extra com a documentação promovida.
@@ -115,6 +116,14 @@ Todos estão registrados em `docs/evidence/<LOTE>/EXECUCAO.md` e foram corrigido
 - **Swagger UI sem CSRF.**
   - **Erro:** a API exige o token CSRF até no login, e o Swagger UI não o enviava; o "Try it out" autenticado respondia 403.
   - **Correção:** F5-C1 (`springdoc.swagger-ui.csrf.enabled` e roteiro no README).
+- **v2.0.0: documentação desatualizada dentro da tag.**
+  - **Erro:** frases escritas antes da release ficaram na tag ("a tag só é criada após o freeze GREEN", paginação "em todas as listagens", "o desafio pede GitHub Actions", "CI/CD" sem deploy).
+  - **Quem pegou:** a terceira auditoria de aderência, sobre a tag `v2.0.0`, com agente independente (`docs/evidence/F5/ADERENCIA-V2.0.0.md`).
+  - **Correção:** F5-P2.
+- **F5-P1 rev1: exemplo de lista no Swagger.**
+  - **Erro:** pela leitura do código do swagger-core, a IA concluiu que `@ArraySchema(arraySchema = @Schema(example = ...))` publicaria o exemplo das listas. O ensaio do gate usava um `/api-docs` simulado e não podia mostrar o contrário.
+  - **Quem pegou:** o teste de contrato escrito no próprio lote (`OpenApiContractIT`), no gate local, apontando os 3 campos sem exemplo.
+  - **Correção:** rev2, com o exemplo posto no item das listas por um `OpenApiCustomizer` (`ApiListExampleDocumentation`).
 
 ## 6. Trecho de prompt representativo
 

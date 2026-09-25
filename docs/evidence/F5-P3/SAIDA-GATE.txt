@@ -1,0 +1,94 @@
+=== PRÉ-CONDIÇÕES DA RELEASE 2.0.1 ===
+   HEAD e4c7b2c472c383ab7758158fd7f733c59daf7c73 · GitHub Odijas/facilit-desafio-kanban
+   versão 2.0.1 em pom.xml, Dockerfile e package.json
+   hotfix/2.0.1 a partir da v2.0.0; F5-P1 e F5-P2 GREEN com saída registrada; tag v2.0.1 ainda não existe
+F5_P3_PRECONDITIONS_GREEN
+=== FRONTEND: FORMAT + LINT + TYPECHECK + STRICT + TEST + BUILD ===
+   STRICT_TYPES_GREEN 32
+   Test Files  6 passed (6)
+   Tests  33 passed (33)
+   pnpm audit --prod (informativo): No known vulnerabilities found
+F5_P3_FRONTEND_GREEN
+=== BACKEND: CLEAN VERIFY ===
+   linhas com 'deprecat' no log do Maven (ferramentas, informativo): 1
+         1 WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+   unitários: 25 classes, 174 testes, 0 falhas, 0 erros, 0 ignorados
+   integração: 12 classes, 51 testes, 0 falhas, 0 erros, 0 ignorados
+   JaCoCo linhas: 1702/1775 = 95.89%
+   BDD: 12 cenários sem falhas/erros
+F5_P3_JACOCO_BDD_GREEN
+F5_P3_BACKEND_GREEN
+=== ANÁLISE ESTÁTICA: WORKFLOW, REPOSITÓRIO, HISTÓRICO E COMMITS ===
+WORKFLOW_POLICY_OK actions=5 jobs=['backend', 'frontend', 'repository']
+   workflow OK
+WORKTREE_OK files=474
+HISTORY_SECRETS_OK
+   repositório e histórico OK
+   Conventional Commits: 86 commits (sem merges); 1 revert auditado legado aceito
+   README, AI_USAGE, CHANGELOG 2.0.1, ADR, auditorias, revisão de segurança, diagramas, links e coleção OK
+F5_P3_STATIC_GREEN
+=== DOCKER: BANCO LIMPO + MIGRATIONS DO ZERO + OBSERVABILIDADE ===
+   banco novo (facilit-kanban-f5p3); migrations V1 2 3 4 5 6 7 aplicadas do zero
+F5_P3_DOCKER_CLEAN_DB_GREEN
+=== UI + SWAGGER ===
+   OpenAPI com 16 caminhos
+   exemplos em parâmetros, corpos e respostas de sucesso das 26 operações REST
+   Swagger UI envia o token CSRF (requestInterceptor)
+F5_P3_UI_SWAGGER_GREEN
+=== REST + GRAPHQL: SMOKE ADMIN + INDICADORES F5 ===
+  ok 1 health REST
+  ok 2 projetos sem sessão
+  ok 3 CSRF antes do login
+  ok 4 login ADMIN
+  ok 5 CSRF renovado após login
+  ok 6 sessão atual
+  ok 7 criar secretaria
+  ok 8 criar responsável
+  ok 9 e-mail duplicado
+  ok 10 criar projeto
+  ok 11 projeto sem responsável
+  ok 12 transição A iniciar → Em andamento
+  ok 13 transição bloqueada Em andamento → Atrasado
+  ok 14 listar com filtros
+  ok 15 busca literal text=_ (nenhum nome com _)
+  ok 16 indicadores
+  ok 17 indicadores por secretaria
+  ok 18 indicadores por responsável
+  ok 19 prazos em 7 dias
+  ok 20 withinDays inválido
+  ok 21 GraphQL projeto e indicadores
+  ok 22 excluir projeto
+  ok 23 excluir responsável
+  ok 24 excluir secretaria
+  ok 25 logout
+  ok 26 sessão encerrada
+F5_P3_API_GREEN
+=== AUTENTICAÇÃO DO RESPONSÁVEL: LEGÍTIMO E ATAQUE ===
+  ok 27 login ADMIN com cabeçalhos
+  ok 28 ADMIN cria outro responsável
+  ok 29 ADMIN cria projeto alheio
+  ok 30 login do responsável de demonstração
+  ok 31 responsável cria o próprio projeto
+  ok 32 responsável transiciona o próprio projeto
+  ok 33 responsável altera projeto alheio
+  ok 34 responsável cria secretaria
+  ok 35 responsável define credencial
+  ok 36 GraphQL do responsável bloqueado
+  ok 37 responsável exclui o próprio projeto
+  ok 38 ADMIN exclui projeto alheio
+  ok 39 ADMIN exclui outro responsável
+F5_P3_RESPONSIBLE_AUTH_GREEN
+=== REVISÃO DE SEGURANÇA EXECUTÁVEL ===
+   banco sem porta no host (portas do contêiner: ['5432/tcp'])
+F5_P3_SECURITY_GREEN
+=== PROMETHEUS + GRAFANA + LOGS ECS ===
+   65 registros ECS no backend
+F5_P3_OBSERVABILITY_GREEN
+=== CI DO COMMIT DA hotfix/2.0.1 ===
+   [1] in_progress:None 36133365561 https://github.com/Odijas/facilit-desafio-kanban/actions/runs/36133365561
+   [2] in_progress:None 36133365561 https://github.com/Odijas/facilit-desafio-kanban/actions/runs/36133365561
+   [3] completed:success 36133365561 https://github.com/Odijas/facilit-desafio-kanban/actions/runs/36133365561
+   {'frontend': 'success', 'repository': 'success', 'backend': 'success'}
+F5_P3_CI_GREEN
+=== F5-P3 GREEN ===
+Resultado: exit code 0

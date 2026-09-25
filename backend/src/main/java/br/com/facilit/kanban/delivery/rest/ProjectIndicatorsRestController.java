@@ -2,6 +2,7 @@ package br.com.facilit.kanban.delivery.rest;
 
 import br.com.facilit.kanban.application.project.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,7 +45,9 @@ public class ProjectIndicatorsRestController {
 
     @GetMapping("/deadlines")
     @Operation(summary = "Lista prazos de projetos não concluídos dentro da janela informada")
-    public ProjectDeadlinesResponse deadlines(@RequestParam(defaultValue = "7") int withinDays) {
+    public ProjectDeadlinesResponse deadlines(
+            @Parameter(description = "Janela em dias a partir de hoje (1 a 90)", example = "7")
+            @RequestParam(defaultValue = "7") int withinDays) {
         return ProjectDeadlinesResponse.from(service.deadlines(withinDays));
     }
 }
