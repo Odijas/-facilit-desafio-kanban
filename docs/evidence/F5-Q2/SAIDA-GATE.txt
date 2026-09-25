@@ -1,0 +1,20 @@
+=== PRÉ-CONDIÇÕES E ESCOPO ===
+   escopo exato: 20 arquivos documentais
+F5_Q2_PRECONDITIONS_GREEN
+=== DOCUMENTAÇÃO ===
+   20 arquivos: conteúdo, referências, testes, auditoria, promoção Q1 e links OK
+F5_Q2_DOCS_GREEN
+=== HISTÓRICO Q1 ===
+   57cf5c7 docs(F5-Q1): registra execução e gate green
+   4fe7e50 refactor(projetos): remove listagens sem uso e migra testes para search
+   a7a17a4 fix(dominio): corrige dicas de bloqueio de transição
+   d2f3f5b fix(api): contextualiza exemplos de erro do OpenAPI
+   75be8a0 build(hotfix): define a versão 2.0.2
+   5 commits sem merge desde v2.0.1; Conventional Commits OK
+F5_Q2_HISTORY_GREEN
+=== CI DA hotfix/2.0.2 COM O Q1 ===
+   [1] 9ab3bbd completed:success 36143782068
+   frontend/backend/repository: success · https://github.com/Odijas/facilit-desafio-kanban/actions/runs/36143782068/job/108099730980
+F5_Q1_CI_GREEN
+=== F5-Q2 GREEN ===
+Resultado: exit code 0

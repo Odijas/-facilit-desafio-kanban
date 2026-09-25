@@ -15,7 +15,7 @@ A proposta de camada de IA para o produto (Etapa 5) está no ADR [`docs/adr/0001
 
 | Ferramenta | Uso |
 |---|---|
-| ChatGPT (OpenAI) | uso em fases anteriores (F0–F2), sob os mesmos prompts de governança |
+| ChatGPT (OpenAI) | uso em fases anteriores (F0–F2), sob os mesmos prompts de governança; na patch `2.0.2`, execução dos lotes F5-Q1 e F5-Q2, incluindo correção do RED do teste de contrato OpenAPI e produção do pacote anti-alucinação |
 | Claude (Anthropic), em conversas e sessões de agente no claude.ai | implementação de backend e frontend, testes, scripts de gate, documentação e pesquisa em fontes oficiais; conduziu toda a F3; na F5, as duas auditorias de aderência (cada uma com um segundo agente independente), os planos de conformidade e de correção da release e os lotes F5-L1 a F5-L3 e F5-C1 a F5-C3; depois da `v2.0.0`, a terceira auditoria (sobre a tag), o plano da patch release 2.0.1 e os lotes F5-P |
 | Ambiente de execução da IA (contêiner Linux) | verificações possíveis sem as dependências completas: `javac` sobre domínio e aplicação, suíte do frontend, validação de schema GraphQL, `promtool`, `actionlint`, `newman` contra servidor simulado |
 | Máquina do desenvolvedor (Linux Mint) | execução real e decisiva: `mvn clean verify` com JDK 25 e Testcontainers, Docker Compose, suíte do frontend em Node 24 e os gates de cada lote |
@@ -40,10 +40,11 @@ O desenvolvimento seguiu uma forma de *spec-driven development*, com três docum
    - prioridade de corte;
    - "Pacote Anti-Alucinação" obrigatório por lote.
 3. **`REPLANEJAMENTO-F3.md`.** Emenda ao plano, com as decisões do desenvolvedor registradas antes da implementação.
-4. **`PLANO-CONFORMIDADE-F5.md`, `PLANO-CORRECAO-RELEASE-2.0.0.md` e `PLANO-CORRECAO-RELEASE-2.0.1.md`.** Specs derivadas de auditorias de aderência ao PDF do desafio:
+4. **`PLANO-CONFORMIDADE-F5.md`, `PLANO-CORRECAO-RELEASE-2.0.0.md`, `PLANO-CORRECAO-RELEASE-2.0.1.md` e `PLANO-CORRECAO-RELEASE-2.0.2.md`.** Specs derivadas de auditorias de aderência ao PDF do desafio:
    - cada lacuna vira um lote com critério de aceite objetivo;
    - as decisões que mudam contrato ou escopo (versão 2.0.0, limites de tamanho, testes unitários no build da imagem) foram tomadas pelo desenvolvedor antes da implementação;
    - na 2.0.1, o desenvolvedor fixou a meta (fechar o único obrigatório corrigível, Swagger com exemplos) e manteve o histórico de commits reconstruído como está e declarado, em vez de reescrever o histórico publicado;
+   - na 2.0.2, a auditoria da `v2.0.1` virou E1–E5 e D1, separados em código/testes (F5-Q1), documentação/promoção (F5-Q2) e freeze/release (F5-Q3), sem mudar regra de negócio nem contrato;
    - cada auditoria teve um segundo agente, sem acesso à análise principal, lendo só o PDF e o código; as divergências entre os dois foram resolvidas pela evidência no código.
 
 Ciclo de cada lote:
@@ -124,6 +125,16 @@ Todos estão registrados em `docs/evidence/<LOTE>/EXECUCAO.md` e foram corrigido
   - **Erro:** pela leitura do código do swagger-core, a IA concluiu que `@ArraySchema(arraySchema = @Schema(example = ...))` publicaria o exemplo das listas. O ensaio do gate usava um `/api-docs` simulado e não podia mostrar o contrário.
   - **Quem pegou:** o teste de contrato escrito no próprio lote (`OpenApiContractIT`), no gate local, apontando os 3 campos sem exemplo.
   - **Correção:** rev2, com o exemplo posto no item das listas por um `OpenApiCustomizer` (`ApiListExampleDocumentation`).
+- **v2.0.1: referências documentais e exemplos de erro inconsistentes.**
+  - **Erro 1:** o README citava quatro testes de transição sem o prefixo `lineNN`, embora os métodos reais já tivessem esses nomes desde a F5-L1.
+  - **Erro 2:** a linha sobre edição por `PUT`, escrita no F5-P2, citava um teste que comprovava recálculo, mas não comprovava a remoção de `actualStart` sem confirmação.
+  - **Erro 3:** `ApiErrorDocumentation` reutilizava exemplos genéricos de 400/403/404 fora do contexto de algumas operações.
+  - **Quem pegou:** a auditoria independente da tag `v2.0.1` (`docs/evidence/F5/ADERENCIA-V2.0.1.md`).
+  - **Correção:** F5-Q1 corrigiu o contrato OpenAPI, adicionou a prova específica do `PUT` e corrigiu as mensagens de transição; F5-Q2 corrige as referências documentais e promove as evidências do GREEN.
+- **F5-Q1 RED 1: helper do teste OpenAPI rígido demais.**
+  - **Erro:** o teste novo procurava `VALIDATION_ERROR` somente em `examples.VALIDATION_ERROR.value`, mas `POST /api/v1/projects` já possuía exemplo 400 diretamente na operação.
+  - **Quem pegou:** `mvn clean verify` no gate do próprio lote, com 1 falha entre 52 testes de integração.
+  - **Correção:** o helper passou a aceitar as formas OpenAPI efetivamente geradas (`example` ou `examples`) sem relaxar a validação campo ↔ schema; a reexecução integral terminou GREEN.
 
 ## 6. Trecho de prompt representativo
 

@@ -86,10 +86,14 @@ class ScheduleFreshnessIT {
         simulateDaysWithoutEditing(created.id(), 10);
 
         PageQuery page = new PageQuery(0, 100);
-        assertThat(projectService.listByStatus(ProjectStatus.OVERDUE, page).content())
+        assertThat(projectService.search(
+                        new ProjectFilter(ProjectStatus.OVERDUE, null, null, null, null, null), page)
+                .content())
                 .extracting(Project::id)
                 .contains(created.id());
-        assertThat(projectService.listByStatus(ProjectStatus.IN_PROGRESS, page).content())
+        assertThat(projectService.search(
+                        new ProjectFilter(ProjectStatus.IN_PROGRESS, null, null, null, null, null), page)
+                .content())
                 .extracting(Project::id)
                 .doesNotContain(created.id());
         assertThat(projectService.search(

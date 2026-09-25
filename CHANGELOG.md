@@ -2,6 +2,24 @@
 
 Todas as mudanças relevantes deste projeto são registradas aqui.
 
+## [2.0.2] — 2026-09-25
+
+### Fixed
+
+- README corrige quatro referências a testes de transição e passa a citar o teste que prova a remoção de `actualStart` por `PUT` sem confirmação, com recálculo de status.
+- Swagger/OpenAPI publica exemplos de 400/403/404 coerentes com cada operação, recurso, campo e parâmetro.
+- Mensagens de bloqueio de transição deixam de imprimir `null` quando faltam datas previstas e passam a orientar os campos ausentes.
+- Concluído → Em andamento orienta `actualStart` quando o projeto recalcula como A iniciar e `plannedEnd` quando recalcula como Atrasado.
+- Evidências do F5-Q1 promovidas para o GREEN realmente executado, incluindo 177 testes unitários/BDD, 52 de integração, JaCoCo 95,17%, BDD 12/12 e Docker/API real.
+
+### Removed
+
+- Código morto de listagem de projetos (`ProjectService.list`/`listByStatus` e cadeia exclusiva de repositório/persistência); os testes usam o caminho canônico `search`, já usado por REST e GraphQL.
+
+### Documentation
+
+- Versionada a auditoria da `v2.0.1` em `docs/evidence/F5/ADERENCIA-V2.0.1.md` e atualizado o ADR 0002 para os pontos de recálculo que permanecem após D1.
+
 ## [2.0.1] — 2026-09-25
 
 ### Fixed

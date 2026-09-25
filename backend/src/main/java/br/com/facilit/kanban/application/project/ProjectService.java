@@ -93,19 +93,6 @@ public final class ProjectService {
                 .orElseThrow(() -> new ResourceNotFoundException("Projeto não encontrado: " + id));
     }
 
-    public PageResult<Project> list(PageQuery pageQuery) {
-        Objects.requireNonNull(pageQuery, "pageQuery is required");
-        refreshSchedules();
-        return projectRepository.findAll(pageQuery);
-    }
-
-    public PageResult<Project> listByStatus(ProjectStatus status, PageQuery pageQuery) {
-        Objects.requireNonNull(status, "status is required");
-        Objects.requireNonNull(pageQuery, "pageQuery is required");
-        refreshSchedules();
-        return projectRepository.findByStatus(status, pageQuery);
-    }
-
     public PageResult<Project> search(ProjectFilter filter, PageQuery pageQuery) {
         Objects.requireNonNull(filter, "filter is required");
         Objects.requireNonNull(pageQuery, "pageQuery is required");
