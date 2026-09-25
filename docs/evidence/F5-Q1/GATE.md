@@ -2,30 +2,33 @@
 
 Data: 2026-09-25
 
-Estado: **CANDIDATE — CORRIGIDO APÓS RED 1, AGUARDANDO REEXECUÇÃO DO GATE LOCAL**.
+Estado: **GREEN**.
 
-## Já verificado
+## Execução decisiva
 
-- `[EXECUTADO]` compilação parcial `application` + `domain` com `javac --release 21`: exit 0.
-- `[EXECUTADO]` harness E2: update remove `actualStart` e recalcula `NOT_STARTED`.
-- `[EXECUTADO]` harness E4/E5: três caminhos corrigidos, sem `null`.
-- `[EXECUTADO]` mapeamento D1: métodos mortos ausentes do candidato; REST/GraphQL de projetos usam `search`.
-- `[EXECUTADO]` diff sem trailing whitespace.
-- `[VERIFICADO]` plano copiado byte a byte sem alteração.
+`[EXECUTADO: gate local fornecido pelo usuário em 2026-09-25]`
 
-## Bloqueios para GREEN
+- escopo: 27 arquivos, versão 2.0.2 em `pom.xml`, `Dockerfile` e `package.json`;
+- unitários/BDD: 25 classes, 177 testes, 0 falhas/erros/ignorados;
+- integração: 12 classes, 52 testes, 0 falhas/erros/ignorados;
+- JaCoCo: 1716/1803 linhas = 95,17%;
+- BDD: 12 cenários GREEN;
+- Docker com banco novo: migrations V1–V7;
+- `/api-docs`: exemplos 400/403/404 coerentes por operação;
+- 404 real de Secretaria igual ao exemplo OpenAPI;
+- 422 da linha 2 sem `null`, orientando `plannedStart`/`plannedEnd`;
+- marcadores `F5_Q1_SCOPE_GREEN`, `F5_Q1_BACKEND_GREEN`, `F5_Q1_DOCKER_API_GREEN`, `=== F5-Q1 GREEN ===` e `Resultado: exit code 0`.
 
-- `[DESCONHECIDO]` `mvn clean verify` com Java 25/Maven.
-- `[DESCONHECIDO]` contagens reais de testes após o lote.
-- `[DESCONHECIDO]` Docker com banco novo e migrations V1–V7.
-- `[DESCONHECIDO]` `/api-docs` real e as chamadas REST exigidas pelo plano.
+Saída registrada em `SAIDA-GATE.txt`.
 
-Execute `VERIFICACAO-USUARIO.md`. O lote só pode virar **GREEN** depois de saída `=== F5-Q1 GREEN ===` e `Resultado: exit code 0`.
+## RED 1 e correção
 
-Nenhum commit, merge ou push deve ser feito antes do GREEN.
+`[EXECUTADO: saída fornecida pelo usuário em 2026-09-25]` A primeira execução falhou somente em `OpenApiContractIT.errorExamplesMatchTheOperationResourceInputAndAuthorizationRule` para `POST /api/v1/projects`, porque o helper novo assumia exclusivamente `examples.VALIDATION_ERROR.value`.
 
-## RED 1 observado
+`[VERIFICADO]` A correção manteve a validação semântica campo ↔ schema e passou a aceitar as formas OpenAPI realmente geradas (`example` ou `examples`). A reexecução integral acima ficou GREEN.
 
-`[EXECUTADO: saída fornecida pelo usuário em 2026-09-25]` `mvn clean verify` executou 52 testes de integração e falhou em 1 teste: `OpenApiContractIT.errorExamplesMatchTheOperationResourceInputAndAuthorizationRule`, para `POST /api/v1/projects`. O Docker/API do gate não chegou a executar porque `set -e` interrompeu no Maven RED.
+## Fechamento Gitflow
 
-`[VERIFICADO]` a correção mantém a força do contrato: o teste continua comparando o campo documentado no erro 400 com as propriedades do schema do request body, mas deixa de depender da forma `examples.VALIDATION_ERROR.value` quando a operação já possui exemplo 400 próprio.
+`[EXECUTADO: saída fornecida pelo usuário em 2026-09-25]` Foram criados commits semânticos do Q1, a `bugfix/2.0.2-q1-code` foi mesclada com `--no-ff` na `hotfix/2.0.2` e ambas foram publicadas no GitHub.
+
+`[EXECUTADO: FECHAMENTO.txt · 2026-09-25]` `HEAD` e `origin/hotfix/2.0.2` são `9ab3bbd81dcf06f6251651cb4dc50aad1a8cf1f5`; o `git status --short` não produziu linha antes desses hashes, portanto a árvore estava limpa na captura.

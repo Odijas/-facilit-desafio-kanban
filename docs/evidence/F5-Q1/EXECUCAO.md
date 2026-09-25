@@ -62,9 +62,9 @@ trailing_whitespace_count=0
 
 `[EXECUTADO]` `cmp` entre o plano fornecido e sua cópia no projeto retornou `cmp_exit=0`.
 
-## Não executado
+## Não executado no ambiente da IA
 
-`[DESCONHECIDO]` `mvn clean verify`, Testcontainers, Docker com banco novo e chamadas reais a `/api-docs`/REST. Executar `VERIFICACAO-USUARIO.md` antes de qualquer commit/merge.
+`[VERIFICADO]` Maven/Java 25, Testcontainers, Docker com banco novo e chamadas reais a `/api-docs`/REST não foram executados pelo ambiente da IA. `[EXECUTADO: gate do usuário em 2026-09-25]` Essas provas foram executadas no ambiente do desenvolvedor e terminaram GREEN, conforme a seção final e `SAIDA-GATE.txt`.
 
 ## Gate local — RED 1 e correção
 
@@ -74,4 +74,32 @@ trailing_whitespace_count=0
 
 `[EXECUTADO]` correção mínima aplicada somente ao consumidor de teste e ao gate: a leitura do exemplo `VALIDATION_ERROR` aceita exemplo nomeado, exemplo direto ou entrada não nomeada em `examples`, inclusive valor JSON textual. A validação continua exigindo que o campo de `violations[0].field` exista no schema real do corpo.
 
-`[DESCONHECIDO]` GREEN após a correção. O usuário deve regerar `/tmp/f5q1-gate.sh` a partir de `VERIFICACAO-USUARIO.md` e executar novamente o gate integral.
+`[EXECUTADO: gate do usuário em 2026-09-25]` A reexecução integral após essa correção terminou GREEN; a saída está registrada abaixo e em `SAIDA-GATE.txt`.
+
+## Gate local — GREEN final
+
+`[EXECUTADO: saída fornecida pelo usuário em 2026-09-25]` A reexecução integral após o RED 1 terminou com `Resultado: exit code 0`.
+
+```text
+F5_Q1_SCOPE_GREEN
+unitários/BDD: 25 classes, 177 testes, 0 falhas/erros/ignorados
+integração: 12 classes, 52 testes, 0 falhas/erros/ignorados
+JaCoCo linhas: 1716/1803 = 95.17%
+BDD: 12 cenários GREEN
+F5_Q1_BACKEND_GREEN
+migrations V1 2 3 4 5 6 7 em banco novo
+/api-docs: exemplos de 400/403/404 coerentes por operação
+404 real de secretaria = exemplo do OpenAPI
+422 linha 2 sem "null" e com orientação de plannedStart/plannedEnd
+F5_Q1_DOCKER_API_GREEN
+=== F5-Q1 GREEN ===
+Resultado: exit code 0
+```
+
+A saída integral curta do gate está em `SAIDA-GATE.txt`.
+
+## Fechamento do lote
+
+`[EXECUTADO: saída fornecida pelo usuário em 2026-09-25]` Commits semânticos criados; merge `--no-ff` de `bugfix/2.0.2-q1-code` em `hotfix/2.0.2`; push das duas branches no GitHub.
+
+`[EXECUTADO: FECHAMENTO.txt · 2026-09-25]` `HEAD=ORIGIN=9ab3bbd81dcf06f6251651cb4dc50aad1a8cf1f5` e árvore limpa na captura.
