@@ -1,0 +1,40 @@
+=== PRÉ-CONDIÇÕES ===
+   33 arquivos alterados, todos do pacote F5-P1; no frontend, só o package.json
+   branch bugfix/2.0.1-p1-swagger sobre a hotfix/2.0.1 = v2.0.0 (3dac1ea)
+F5_P1_PRECONDITIONS_GREEN
+=== BACKEND: CLEAN VERIFY + BDD + JACOCO ===
+   unitários/BDD: 25 relatórios, 174 testes, 0 falhas/erros/ignorados
+   integração: 12 relatórios, 51 testes, 0 falhas/erros/ignorados
+   OpenApiContractIT: 5 testes OK
+   ProjectPersistenceAdapterIT: 6 testes OK
+   BDD: 12 cenários, 48 passos aprovados
+   JaCoCo (unitários + integração): 95.55% de linhas (1696/1775)
+F5_P1_BACKEND_GREEN
+=== ESTÁTICA ===
+   33 arquivos do lote OK; versão 2.0.1; LIKE com ESCAPE; aplicação sem OpenAPI; plano com as decisões
+F5_P1_STATIC_GREEN
+=== DOCKER: BANCO NOVO + MIGRATIONS 1–7 + IMAGEM 2.0.1 ===
+   banco novo (facilit-kanban-f5p1); migrations V1 2 3 4 5 6 7; imagem construída com kanban-2.0.1.jar
+F5_P1_DOCKER_GREEN
+=== API: EXEMPLOS NO OPENAPI, FILTRO LITERAL E REGRESSÕES ===
+  ok 1 GET /api/v1/auth/csrf
+  ok 2 login ADMIN
+  ok 3 token novo após o login
+  ok 4 OpenAPI
+   OpenAPI: 26 operações; 25 parâmetros, 9 corpos e 21 respostas de sucesso com exemplo; 0 faltas; /auth/csrf sem parâmetro; maxItems/maxLength mantidos
+  ok 5 exemplos em todas as operações do OpenAPI
+  ok 6 Swagger UI continua enviando o CSRF
+  ok 7 responsável para os projetos
+  ok 8 projeto "Meta 100%"
+  ok 9 projeto "Meta 1000"
+  ok 10 projeto "Lote_A"
+  ok 11 projeto "LoteXA"
+  ok 12 busca text=100% (REST)
+  ok 13 busca text=% (REST)
+  ok 14 busca text=_ (REST)
+  ok 15 busca text=lote_a (REST)
+  ok 16 busca text=meta (REST)
+  ok 17 busca text=_ (GraphQL)
+F5_P1_API_GREEN
+=== F5-P1 GREEN ===
+Resultado: exit code 0

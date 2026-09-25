@@ -2,7 +2,11 @@
 
 Data: 2026-09-25
 
-Estado: **CANDIDATE**, aguardando o gate local.
+Estado: **GREEN** (gate local do rev2 em 2026-09-25, 8h44; saída em `SAIDA-GATE.txt`).
+
+- O rev1 ficou RED no `OpenApiContractIT`: o exemplo de `@ArraySchema` não chegou ao `/api-docs` (ver `EXECUCAO.md` e `DECISOES.md`).
+- O CI da `hotfix/2.0.1` com o F5-P1 é conferido no gate do F5-P2 (`F5_P1_CI_GREEN`).
+- A conferência do Swagger UI no navegador (seção 3) fica registrada no F5-P3.
 
 Escopo: lote F5-P1 de `docs/governance/PLANO-CORRECAO-RELEASE-2.0.1.md`, na `hotfix/2.0.1`. Cobre o Swagger com exemplos completos (#40), o filtro de texto literal (decisão 1) e a versão 2.0.1.
 
