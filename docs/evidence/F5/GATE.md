@@ -2,7 +2,13 @@
 
 Data: 2026-09-24
 
-Estado ao preparar o lote: **PENDENTE DE EXECUÇÃO DO USUÁRIO**.
+Estado: **GREEN**.
+
+- `[EXECUTADO PELO USUÁRIO · 2026-09-24]` Freeze: `=== F5-L5 GREEN ===` e exit code 0 na `release/2.0.0` @ `9eca274` (`SAIDA-GATE.txt`); CI da release na run 36082256488.
+- `[EXECUTADO PELO USUÁRIO · 2026-09-24]` Release: `main` @ `3dac1ea` = tag anotada `v2.0.0`, back-merge na `develop`, GitHub e GitLab atualizados; CI da `main` verde (run 36082635036).
+- `[EXECUTADO PELO USUÁRIO · 2026-09-24]` A verificação pública (`VERIFICACAO-RELEASE.md`) terminou GREEN depois de corrigido um falso negativo do próprio script (`curl | grep -q` com `pipefail`). A correção e a saída (`SAIDA-RELEASE.txt`) foram versionadas na `develop`, depois da tag.
+
+Critérios, como definidos ao preparar o lote:
 
 O F5-L5 só fica GREEN quando:
 

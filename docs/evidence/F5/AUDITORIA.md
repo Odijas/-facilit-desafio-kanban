@@ -1,8 +1,8 @@
 # F5 — AUDITORIA FINAL REQUISITO → IMPLEMENTAÇÃO → TESTE → EVIDÊNCIA
 
-Data: 2026-09-24 · Release candidata `2.0.0`.
+Data: 2026-09-24 · Release `2.0.0` (publicada em 2026-09-24; estado atualizado em 2026-09-25 na patch 2.0.1).
 
-A auditoria consolida a aderência funcional promovida nos lotes F5-L1 a F5-L4 e nos lotes de correção F5-C1 a F5-C3. Os lotes C vieram de uma segunda auditoria independente sobre a release candidata (`ADERENCIA-FINAL.md`, 24/09). O estado da **release** continua pendente até `SAIDA-GATE.txt` e `SAIDA-RELEASE.txt` existirem com exit code 0.
+A auditoria consolida a aderência funcional promovida nos lotes F5-L1 a F5-L4 e nos lotes de correção F5-C1 a F5-C3. Os lotes C vieram de uma segunda auditoria independente sobre a release candidata (`ADERENCIA-FINAL.md`, 24/09). Freeze e release terminaram GREEN (`GATE.md`).
 
 ## Obrigatórios do desafio
 
@@ -53,7 +53,8 @@ A auditoria consolida a aderência funcional promovida nos lotes F5-L1 a F5-L4 e
 
 ## Lacunas declaradas
 
-- `[DESCONHECIDO]` o freeze e a release pública `v2.0.0` ainda não foram executados neste arquivo; são bloqueados pelos dois gates do L5.
+- `[EXECUTADO PELO USUÁRIO · 2026-09-24]` freeze e release pública `v2.0.0` GREEN (`GATE.md`).
+- Aderência medida na tag `v2.0.0` pela terceira auditoria: 97,5% dos obrigatórios e 96% dos diferenciais (`ADERENCIA-V2.0.0.md`). O único obrigatório corrigível (#40, exemplos no Swagger) foi fechado na patch 2.0.1 (F5-P1); o #9 (histórico) fica Parcial e declarado.
 - Aderência medida pela segunda auditoria antes dos lotes C: 95% dos obrigatórios e 96% dos diferenciais (`ADERENCIA-FINAL.md`). Os lotes F5-C1 e F5-C2 fecharam as parciais de Docker (#2), métricas linha a linha (#29) e validação de tamanho (#32).
 - Histórico de commits: F2-L1 a F3-L4 foram reconstruídos por lote depois dos gates (`docs/evidence/F3-L4/RECONSTRUCAO-HISTORICO.md`); declarado no README.
 - GraphiQL exige o token CSRF à mão no painel Headers (roteiro no README); o Swagger UI envia automaticamente.
