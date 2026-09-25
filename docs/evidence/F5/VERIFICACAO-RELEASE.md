@@ -82,7 +82,10 @@ echo 'F5_RELEASE_CI_GREEN'
 echo '=== PÁGINA DO REPOSITÓRIO ==='
 curl -fsS -H 'Accept: application/vnd.github+json' "$API" >/tmp/f5r-repo.json
 python3 -c "import json; r = json.load(open('/tmp/f5r-repo.json')); assert r['private'] is False and r['default_branch'] == 'main', (r['private'], r['default_branch']); print('   público, branch padrão main')"
-curl -fsS "https://raw.githubusercontent.com/$GITHUB_REPO/v2.0.0/README.md" | grep -q 'F5-L5 — Release `v2.0.0`' || fail 'README da tag sem o estado da release'
+# Baixa para arquivo antes de procurar: com pipefail, `curl | grep -q` falha quando o grep acha o texto e fecha o pipe (curl 23).
+curl -fsS "https://raw.githubusercontent.com/$GITHUB_REPO/v2.0.0/README.md" -o /tmp/f5r-readme.md || fail 'README da tag não pôde ser baixado'
+grep -Fq 'F5-L5 — Release `v2.0.0`' /tmp/f5r-readme.md || fail 'README da tag sem o estado da release'
+rm -f /tmp/f5r-readme.md
 rm -f /tmp/f5r-*.json
 echo 'F5_RELEASE_PAGE_GREEN'
 
