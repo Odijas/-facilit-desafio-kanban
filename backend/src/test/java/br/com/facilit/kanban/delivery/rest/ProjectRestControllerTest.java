@@ -39,6 +39,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -112,6 +114,45 @@ class ProjectRestControllerTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
                 .andExpect(jsonPath("$.detail").value("Dados de entrada inválidos."))
                 .andExpect(jsonPath("$.violations[*].field", containsInAnyOrder("name", "responsibleIds")));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void rejectsNameAndResponsibleListAboveTheLimits() throws Exception {
+        String responsibleIds = IntStream.range(0, 51)
+                .mapToObj(index -> "\"" + UUID.randomUUID() + "\"")
+                .collect(Collectors.joining(","));
+
+        mockMvc.perform(post("/api/v1/projects")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\": \"%s\", \"responsibleIds\": [%s]}".formatted("a".repeat(201), responsibleIds)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.violations[0].field").value("name"))
+                .andExpect(jsonPath("$.violations[0].message").value("tamanho deve ser entre 0 e 200"))
+                .andExpect(jsonPath("$.violations[1].field").value("responsibleIds"))
+                .andExpect(jsonPath("$.violations[1].message").value("tamanho deve ser entre 0 e 50"));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void acceptsNameAtTheLimit() throws Exception {
+        when(service.create(any(), eq(ADMIN))).thenReturn(project(ProjectStatus.NOT_STARTED, null));
+
+        mockMvc.perform(post("/api/v1/projects")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\": \"%s\", \"responsibleIds\": [\"%s\"]}".formatted("a".repeat(200), RESPONSIBLE_ID)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void rejectsSearchTextAboveTheLimit() throws Exception {
+        mockMvc.perform(get("/api/v1/projects").param("text", "a".repeat(101)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.detail").value("Texto de busca muito longo: use no máximo 100 caracteres (text)."));
 
         verifyNoInteractions(service);
     }

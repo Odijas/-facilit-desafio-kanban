@@ -5,11 +5,13 @@ import br.com.facilit.kanban.application.common.PageResult;
 import br.com.facilit.kanban.application.responsible.ResponsibleCredentialService;
 import br.com.facilit.kanban.application.responsible.ResponsibleService;
 import br.com.facilit.kanban.application.responsible.SaveResponsibleCommand;
+import br.com.facilit.kanban.delivery.common.InputLimits;
 import br.com.facilit.kanban.domain.responsible.Responsible;
 import br.com.facilit.kanban.infrastructure.security.AuthenticatedActorResolver;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
@@ -94,9 +96,9 @@ public class ResponsibleGraphQlController {
     }
 
     public record ResponsibleGraphQlInput(
-            @NotBlank String name,
-            @NotBlank @Email String email,
-            @NotBlank String position,
+            @NotBlank @Size(max = InputLimits.NAME_MAX_LENGTH) String name,
+            @NotBlank @Email @Size(max = InputLimits.EMAIL_MAX_LENGTH) String email,
+            @NotBlank @Size(max = InputLimits.NAME_MAX_LENGTH) String position,
             String secretariatId) {
 
         SaveResponsibleCommand toCommand() {

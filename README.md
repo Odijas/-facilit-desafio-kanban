@@ -211,6 +211,7 @@ Coleção de API ([`docs/api/facilit-kanban.postman_collection.json`](docs/api/f
   No GraphQL, o mesmo código vai em `extensions.code`. O Swagger documenta os erros de cada operação com exemplos (`ApiErrorDocumentation`, verificado por `OpenApiContractIT`).
 - Logs de negócio (`evento=projeto.criado|atualizado|transicao|transicao.recusada|excluido`, `responsavel.*`, `secretaria.*`, `credencial.*`, `projeto.status.recalculado`) em formato `chave=valor`, só com ids, status e perfil do ator, sem nome nem e-mail.
 - Paginação por `page`/`size` em todas as listagens.
+- Limites de entrada, iguais em REST e GraphQL (`InputLimits`, `ProjectFilter`): nome de projeto, responsável e secretaria e cargo até 200 caracteres; e-mail até 254; de 1 a 50 responsáveis por projeto → 400 `VALIDATION_ERROR` (no Swagger, `maxLength`/`maxItems`). Texto de busca até 100 caracteres → 400 `INVALID_REQUEST`, como os demais filtros. O banco guarda `TEXT`; o limite fica na borda da API.
 
 ## Segurança
 
@@ -308,7 +309,8 @@ Estado dos lotes:
 - F5-L3 — Camadas de teste completas e transação por caso de uso: GREEN em 2026-09-24.
 - F5-L4 — Etapa 3, BDD e cobertura: GREEN em 2026-09-24.
 - F5-L5 — Release `v2.0.0`: roteiro, auditoria e gates em `docs/evidence/F5/`; a tag só é criada após o freeze GREEN.
-- F5-C1 — Entrega executável (build da imagem do backend e CSRF no Swagger UI), correção na `release/2.0.0` conforme `docs/governance/PLANO-CORRECAO-RELEASE-2.0.0.md`: CANDIDATE em 2026-09-24, aguardando gate local.
+- F5-C1 — Entrega executável (build da imagem do backend e CSRF no Swagger UI), correção na `release/2.0.0` conforme `docs/governance/PLANO-CORRECAO-RELEASE-2.0.0.md`: GREEN em 2026-09-24.
+- F5-C2 — Rigor de testes e validação (métricas linha a linha no BDD e limites de tamanho nas entradas): CANDIDATE em 2026-09-24, aguardando gate local.
 
 ### Resumo por lote
 

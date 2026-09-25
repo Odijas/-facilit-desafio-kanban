@@ -36,8 +36,9 @@ public class StatusTransitionSteps {
         ProjectDates dates = switch (scenario) {
             case "not_started_future" -> new ProjectDates(TODAY.plusDays(1), TODAY.plusDays(10), null, null);
             case "in_progress_future" -> new ProjectDates(TODAY, TODAY.plusDays(10), TODAY, null);
-            case "overdue_not_started" -> new ProjectDates(TODAY.minusDays(2), TODAY.plusDays(5), null, null);
-            case "completed_future" -> new ProjectDates(TODAY, TODAY.plusDays(10), TODAY, TODAY);
+            case "overdue_not_started" -> new ProjectDates(TODAY.minusDays(5), TODAY.minusDays(1), null, null);
+            case "completed_future" ->
+                new ProjectDates(TODAY.minusDays(2), TODAY.plusDays(8), TODAY.minusDays(2), TODAY);
             case "completed_overdue" ->
                 new ProjectDates(TODAY.minusDays(10), TODAY.minusDays(1), TODAY.minusDays(10), TODAY);
             default -> throw new IllegalArgumentException("Cenário BDD desconhecido: " + scenario);
@@ -78,5 +79,17 @@ public class StatusTransitionSteps {
         assertThat(failure).isNull();
         assertThat(result).isNotNull();
         assertThat(result.schedule().status()).isEqualTo(ProjectStatus.valueOf(expected));
+    }
+
+    @Entao("as métricas depois da transição são atraso {string} e percentual restante {string}")
+    public void thenMetrics(String delayDays, String remainingPercentage) {
+        if ("-".equals(delayDays) && "-".equals(remainingPercentage)) {
+            assertThat(failure).isNotNull();
+            assertThat(result).isNull();
+            return;
+        }
+        assertThat(result).isNotNull();
+        assertThat(result.schedule().delayDays()).isEqualTo(Long.parseLong(delayDays));
+        assertThat(result.schedule().remainingTimePercentage()).isEqualTo(Integer.parseInt(remainingPercentage));
     }
 }

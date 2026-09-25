@@ -87,6 +87,19 @@ class SecretariatRestControllerTest {
     }
 
     @Test
+    void rejectsNameAboveTheLimit() throws Exception {
+        mockMvc.perform(post("/api/v1/secretariats")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\": \"%s\"}".formatted("s".repeat(201))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.violations[0].field").value("name"))
+                .andExpect(jsonPath("$.violations[0].message").value("tamanho deve ser entre 0 e 200"));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
     void translatesForbiddenCreationByResponsible() throws Exception {
         when(service.create(any(), any())).thenThrow(
                 new ForbiddenOperationException("Apenas o administrador pode realizar esta operação."));

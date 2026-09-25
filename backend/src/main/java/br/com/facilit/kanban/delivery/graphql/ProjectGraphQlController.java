@@ -9,12 +9,14 @@ import br.com.facilit.kanban.application.project.ProjectGroupIndicator;
 import br.com.facilit.kanban.application.project.ProjectIndicators;
 import br.com.facilit.kanban.application.project.ProjectService;
 import br.com.facilit.kanban.application.project.SaveProjectCommand;
+import br.com.facilit.kanban.delivery.common.InputLimits;
 import br.com.facilit.kanban.domain.project.Project;
 import br.com.facilit.kanban.domain.project.ProjectStatus;
 import br.com.facilit.kanban.infrastructure.security.AuthenticatedActorResolver;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.util.List;
@@ -143,8 +145,8 @@ public class ProjectGraphQlController {
     }
 
     public record ProjectGraphQlInput(
-            @NotBlank String name,
-            @NotEmpty List<@NotBlank String> responsibleIds,
+            @NotBlank @Size(max = InputLimits.NAME_MAX_LENGTH) String name,
+            @NotEmpty @Size(max = InputLimits.RESPONSIBLES_MAX) List<@NotBlank String> responsibleIds,
             String plannedStart,
             String plannedEnd,
             String actualStart,
