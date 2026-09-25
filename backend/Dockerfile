@@ -10,7 +10,7 @@ RUN mvn -B -ntp -DskipITs -Djacoco.skip=true verify
 FROM eclipse-temurin:25.0.4_7-jre-alpine-3.24
 WORKDIR /app
 RUN addgroup -S app && adduser -S app -G app
-COPY --from=build /workspace/target/kanban-2.0.1.jar app.jar
+COPY --from=build /workspace/target/kanban-2.0.2.jar app.jar
 USER app:app
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
