@@ -5,9 +5,11 @@ import br.com.facilit.kanban.application.common.PageResult;
 import br.com.facilit.kanban.application.responsible.ResponsibleCredentialService;
 import br.com.facilit.kanban.application.responsible.ResponsibleService;
 import br.com.facilit.kanban.application.responsible.SaveResponsibleCommand;
+import br.com.facilit.kanban.delivery.common.ApiExamples;
 import br.com.facilit.kanban.domain.responsible.Responsible;
 import br.com.facilit.kanban.infrastructure.security.AuthenticatedActorResolver;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -73,7 +75,9 @@ public class ResponsibleRestController {
                                   "name": "Maria Silva",
                                   "email": "maria.silva@example.com",
                                   "position": "Analista",
-                                  "secretariatId": null
+                                  "secretariatId": null,
+                                  "createdAt": "2026-09-22T12:00:00Z",
+                                  "updatedAt": "2026-09-22T12:00:00Z"
                                 }
                                 """))),
         @ApiResponse(
@@ -99,14 +103,16 @@ public class ResponsibleRestController {
     }
 
     @GetMapping("/{id}")
-    public ResponsibleResponse get(@PathVariable UUID id) {
+    public ResponsibleResponse get(@Parameter(description = "Id do responsável", example = ApiExamples.RESPONSIBLE_ID) @PathVariable UUID id) {
         return ResponsibleResponse.from(service.get(id));
     }
 
     @GetMapping
     @Operation(summary = "Lista responsáveis com paginação")
     public PageResponse<ResponsibleResponse> list(
+            @Parameter(description = "Página, a partir de 0", example = "0")
             @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Itens por página", example = "20")
             @RequestParam(defaultValue = "20") int size) {
         PageResult<Responsible> result = service.list(new PageQuery(page, size));
         return new PageResponse<>(
@@ -121,14 +127,14 @@ public class ResponsibleRestController {
 
     @PutMapping("/{id}")
     public ResponsibleResponse update(
-            @PathVariable UUID id,
+            @Parameter(description = "Id do responsável", example = ApiExamples.RESPONSIBLE_ID) @PathVariable UUID id,
             @Valid @RequestBody ResponsibleRequest request,
             Principal principal) {
         return ResponsibleResponse.from(service.update(id, toCommand(request), actorResolver.resolve(principal)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id, Principal principal) {
+    public ResponseEntity<Void> delete(@Parameter(description = "Id do responsável", example = ApiExamples.RESPONSIBLE_ID) @PathVariable UUID id, Principal principal) {
         service.delete(id, actorResolver.resolve(principal));
         return ResponseEntity.noContent().build();
     }
@@ -136,7 +142,7 @@ public class ResponsibleRestController {
     @PutMapping("/{id}/credentials")
     @Operation(summary = "Define ou redefine a senha de acesso de um responsável (somente ADMIN)")
     public ResponseEntity<Void> setCredentials(
-            @PathVariable UUID id,
+            @Parameter(description = "Id do responsável", example = ApiExamples.RESPONSIBLE_ID) @PathVariable UUID id,
             @Valid @RequestBody ResponsibleCredentialsRequest request,
             Principal principal) {
         credentialService.setPassword(id, request.password(), actorResolver.resolve(principal));
@@ -145,7 +151,7 @@ public class ResponsibleRestController {
 
     @DeleteMapping("/{id}/credentials")
     @Operation(summary = "Revoga o acesso de um responsável (somente ADMIN)")
-    public ResponseEntity<Void> revokeCredentials(@PathVariable UUID id, Principal principal) {
+    public ResponseEntity<Void> revokeCredentials(@Parameter(description = "Id do responsável", example = ApiExamples.RESPONSIBLE_ID) @PathVariable UUID id, Principal principal) {
         credentialService.revoke(id, actorResolver.resolve(principal));
         return ResponseEntity.noContent().build();
     }
