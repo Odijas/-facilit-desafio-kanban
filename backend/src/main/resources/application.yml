@@ -41,6 +41,9 @@ springdoc:
     path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
+    # O Swagger UI lê o cookie XSRF-TOKEN e envia o cabeçalho X-XSRF-TOKEN, exigido pelo CSRF da API.
+    csrf:
+      enabled: true
 
 management:
   endpoints:
