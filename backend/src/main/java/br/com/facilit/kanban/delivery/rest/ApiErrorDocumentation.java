@@ -1,5 +1,6 @@
 package br.com.facilit.kanban.delivery.rest;
 
+import br.com.facilit.kanban.delivery.common.ApiExamples;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -37,6 +38,10 @@ public class ApiErrorDocumentation {
     private static final Set<String> PUBLIC_PATHS = Set.of("/api/v1/health", "/api/v1/auth/csrf");
     private static final String LOGIN_PATH = "/api/v1/auth/login";
     private static final String PROJECTS_PATH = "/api/v1/projects";
+    private static final String RESPONSIBLES_PATH = "/api/v1/responsibles";
+    private static final String SECRETARIATS_PATH = "/api/v1/secretariats";
+    private static final String CREDENTIALS_PATH = "/api/v1/responsibles/{id}/credentials";
+    private static final String DEADLINES_PATH = "/api/v1/indicators/projects/deadlines";
     private static final String TRANSITION_PATH = "/api/v1/projects/{id}/status";
 
     @Bean
@@ -102,18 +107,15 @@ public class ApiErrorDocumentation {
         }
 
         if (operation.getRequestBody() != null) {
-            add(responses, "400", "Entrada inválida", validationError("name"));
+            add(responses, "400", "Entrada inválida", validationError(requestBodyField(path)));
         } else if (operation.getParameters() != null
                 && operation.getParameters().stream().anyMatch(parameter -> "query".equals(parameter.getIn()))) {
-            add(responses, "400", "Parâmetro inválido", example(
-                    "INVALID_REQUEST", 400, "Tamanho de página inválido: size deve estar entre 1 e 100."));
+            add(responses, "400", "Parâmetro inválido", queryValidationError(path));
         }
         add(responses, "401", "Sem sessão autenticada", example("UNAUTHORIZED", 401, "Autenticação obrigatória."));
-        add(responses, "403", "Sem permissão (ou sem token CSRF em escrita)",
-                example("FORBIDDEN", 403, "O responsável só pode alterar projetos em que é responsável."));
+        add(responses, "403", "Sem permissão (ou sem token CSRF em escrita)", forbiddenError(path, write));
         if (path.contains("{id}")) {
-            add(responses, "404", "Recurso não encontrado", example(
-                    "RESOURCE_NOT_FOUND", 404, "Projeto não encontrado: 30000000-0000-4000-8000-000000000001"));
+            add(responses, "404", "Recurso não encontrado", notFoundError(path, method));
         }
         if (write) {
             add(responses, "409", "Conflito com dados já gravados", example(
@@ -128,6 +130,52 @@ public class ApiErrorDocumentation {
                             + "(2026-09-24): informe a data em que o projeto de fato começou ou deixe o campo vazio"));
         }
         add(responses, "500", "Erro inesperado", internalError());
+    }
+
+    private static String requestBodyField(String path) {
+        if (TRANSITION_PATH.equals(path)) {
+            return "status";
+        }
+        if (CREDENTIALS_PATH.equals(path)) {
+            return "password";
+        }
+        return "name";
+    }
+
+    private static Map<String, Example> queryValidationError(String path) {
+        if (DEADLINES_PATH.equals(path)) {
+            return example("INVALID_REQUEST", 400, "withinDays deve estar entre 1 e 90.");
+        }
+        return example("INVALID_REQUEST", 400, "Tamanho de página inválido: size deve estar entre 1 e 100.");
+    }
+
+    private static Map<String, Example> forbiddenError(String path, boolean write) {
+        if (write && path.startsWith(PROJECTS_PATH)) {
+            return example("FORBIDDEN", 403, "O responsável só pode alterar projetos em que é responsável.");
+        }
+        if (write && (path.startsWith(RESPONSIBLES_PATH) || path.startsWith(SECRETARIATS_PATH))) {
+            return example("FORBIDDEN", 403, "Apenas o administrador pode realizar esta operação.");
+        }
+        return example("FORBIDDEN", 403, "Acesso negado.");
+    }
+
+    private static Map<String, Example> notFoundError(String path, PathItem.HttpMethod method) {
+        if (CREDENTIALS_PATH.equals(path) && method == PathItem.HttpMethod.DELETE) {
+            return example(
+                    "RESOURCE_NOT_FOUND",
+                    404,
+                    "Credencial não encontrada para o responsável: " + ApiExamples.RESPONSIBLE_ID);
+        }
+        if (path.startsWith(PROJECTS_PATH)) {
+            return example("RESOURCE_NOT_FOUND", 404, "Projeto não encontrado: " + ApiExamples.PROJECT_ID);
+        }
+        if (path.startsWith(RESPONSIBLES_PATH)) {
+            return example("RESOURCE_NOT_FOUND", 404, "Responsável não encontrado: " + ApiExamples.RESPONSIBLE_ID);
+        }
+        if (path.startsWith(SECRETARIATS_PATH)) {
+            return example("RESOURCE_NOT_FOUND", 404, "Secretaria não encontrada: " + ApiExamples.SECRETARIAT_ID);
+        }
+        throw new IllegalStateException("Caminho com {id} sem exemplo de 404: " + path);
     }
 
     private static void add(ApiResponses responses, String code, String description, Map<String, Example> examples) {
