@@ -98,17 +98,18 @@ class ProjectServiceMockitoTest {
         when(projectRepository.findStaleSchedules(TODAY, ProjectScheduleRefresher.BATCH_SIZE))
                 .thenReturn(List.of(new ProjectScheduleSnapshot(staleId, dates)));
         when(projectRepository.updateSchedules(anyList(), eq(TODAY))).thenReturn(1);
-        when(projectRepository.findByStatus(ProjectStatus.OVERDUE, new PageQuery(0, 20)))
+        ProjectFilter filter = new ProjectFilter(ProjectStatus.OVERDUE, null, null, null, null, null);
+        when(projectRepository.search(filter, new PageQuery(0, 20)))
                 .thenReturn(new PageResult<>(List.of(), 0, 20, 0, 0));
 
-        service.listByStatus(ProjectStatus.OVERDUE, new PageQuery(0, 20));
+        service.search(filter, new PageQuery(0, 20));
 
         InOrder order = inOrder(projectRepository);
         order.verify(projectRepository).findStaleSchedules(TODAY, ProjectScheduleRefresher.BATCH_SIZE);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<ProjectScheduleUpdate>> updates = ArgumentCaptor.forClass(List.class);
         order.verify(projectRepository).updateSchedules(updates.capture(), eq(TODAY));
-        order.verify(projectRepository).findByStatus(ProjectStatus.OVERDUE, new PageQuery(0, 20));
+        order.verify(projectRepository).search(filter, new PageQuery(0, 20));
         assertThat(updates.getValue()).singleElement().satisfies(update -> {
             assertThat(update.id()).isEqualTo(staleId);
             assertThat(update.schedule().status()).isEqualTo(ProjectStatus.OVERDUE);

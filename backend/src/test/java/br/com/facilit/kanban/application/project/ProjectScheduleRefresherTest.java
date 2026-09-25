@@ -94,10 +94,9 @@ class ProjectScheduleRefresherTest {
         clock.advance(Duration.ofDays(10));
 
         PageQuery page = new PageQuery(0, 20);
-        assertThat(service.listByStatus(ProjectStatus.IN_PROGRESS, page).content()).isEmpty();
-        assertThat(service.listByStatus(ProjectStatus.OVERDUE, page).content())
-                .extracting(Project::id)
-                .containsExactly(created.id());
+        assertThat(service.search(new ProjectFilter(ProjectStatus.IN_PROGRESS, null, null, null, null, null), page)
+                .content())
+                .isEmpty();
         assertThat(service.search(new ProjectFilter(ProjectStatus.OVERDUE, null, null, null, null, null), page)
                 .content())
                 .extracting(Project::id)
@@ -144,7 +143,10 @@ class ProjectScheduleRefresherTest {
         clock.advance(Duration.ofDays(10));
 
         assertThat(service.refreshSchedules()).isEqualTo(total);
-        assertThat(service.listByStatus(ProjectStatus.OVERDUE, new PageQuery(0, 1)).totalElements())
+        assertThat(service.search(
+                        new ProjectFilter(ProjectStatus.OVERDUE, null, null, null, null, null),
+                        new PageQuery(0, 1))
+                .totalElements())
                 .isEqualTo(total);
     }
 
